@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "notes": "First release.",
-  "url": "https://r-harsh.github.io/shop-billing1/",
+  "version": "1.0.1",
+  "notes": "Bug fixes and small improvements.",
+  "url": "https://const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';/Shop_Billing.html",
   "force": false
 }
