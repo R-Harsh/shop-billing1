@@ -1,6 +1,6 @@
 {
-  "version": "1.2.3",
-  "notes": "New: go back to the previous version anytime from Setup, in case an update gives trouble.\nFaster tables and screens, fixed colours on the permissions list, and fixed the bottom bar covering content on phones.\nUpdate check now works even if you tap it while it is already checking.",
+  "version": "1.2.4",
+  "notes": "Fixed: the Total and Complete bill button no longer slide far down the Bill screen.\nComplete bill button text is fully visible again.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
