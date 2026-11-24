@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "notes": "Smoother update experience: live progress with install steps and a success screen.\nNicer buttons, hover effects and animations across the whole app.\nAll your bills and data stay exactly as they are.",
+  "version": "1.2.1",
+  "notes": "Smoother, friendlier app: nicer empty screens, colour-coded messages, animated totals and tap feedback.\nNew back-to-top button, offline notice, and press / to search.\nAll your bills and data stay exactly as they are.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
