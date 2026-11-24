@@ -464,7 +464,8 @@ const money=n=>'₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{minimumFrac
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const fp=(d,s)=>s?+(d/s*100).toFixed(1):0;
 const PM=['Cash','UPI','Pay later'];const LEG=['Cash','UPI','Card','Pay later'];
-const payAmt=(s,k)=>s.split?(+s.split[k]||0):(s.pay===k?s.total:0);
+const _pn=x=>String(x||'').trim().toLowerCase();
+const payAmt=(s,k)=>{if(s.split){let a=0;for(const q in s.split)if(_pn(q)===_pn(k))a+=(+s.split[q]||0);return a}return _pn(s.pay)===_pn(k)?(+s.total||0):0};
 const payLines=s=>s.split?['Paid by: Split'].concat(LEG.filter(k=>+s.split[k]>0).map(k=>k+': Rs '+(+s.split[k]).toFixed(2))):['Paid by: '+s.pay];
 const payTxt=(s,pl)=>s.split?LEG.filter(k=>+s.split[k]>0).map(k=>k+' '+(pl?'Rs '+(+s.split[k]).toFixed(2):money(+s.split[k]))).join(' + '):s.pay;
 const find=c=>S.items.find(i=>i.c===c);
@@ -2632,12 +2633,20 @@ $('bNew').onclick=()=>{
 /* customers and pay later */
 const ck=s=>String(s.phone||'').replace(/\D/g,'').slice(-10)||String(s.cust||'').trim().toLowerCase();
 function custData(){const m={};
- S.sales.filter(s=>!s.void).forEach(s=>{const k=ck(s);if(!k)return;const c=m[k]=m[k]||{k,n:'',ph:'',b:0,sp:0,due:0};c.n=s.cust||c.n;c.ph=s.phone||c.ph;c.b++;c.sp+=s.total;c.due+=payAmt(s,'Pay later')});
+ S.sales.filter(s=>!s.void).forEach(s=>{const k=ck(s)||(payAmt(s,'Pay later')>0?'__noname':'');if(!k)return;const c=m[k]=m[k]||{k,n:k==='__noname'?'(Name not saved)':'',ph:'',b:0,sp:0,due:0};c.n=s.cust||c.n;c.ph=s.phone||c.ph;c.lt=Math.max(c.lt||0,s.t||0);c.b++;c.sp+=s.total;c.due+=payAmt(s,'Pay later')});
  S.pays.forEach(p=>{if(p.open&&!m[p.k])m[p.k]={k:p.k,n:p.n||'',ph:p.ph||'',b:0,sp:0,due:0};if(m[p.k]){if(p.open){m[p.k].n=m[p.k].n||p.n||'';m[p.k].ph=m[p.k].ph||p.ph||''}m[p.k].due-=p.a}});Object.values(m).forEach(c=>{c.due=Math.round(c.due*100)/100});return m}
-function renderCust(){
- const L=Object.values(custData()).sort((a,b)=>b.due-a.due||b.sp-a.sp),owed=L.reduce((a,c)=>a+Math.max(c.due,0),0);
- $('custBody').innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><span>Total pending: <b>${money(owed)}</b></span><button class="btn sm" id="cAdd">+ New customer with pending payment</button></div>`+(L.length?'<div class="scroll"><table class="table"><tr><th>Customer</th><th>Mobile</th><th class="r">Bills</th><th class="r">Bought</th><th class="r">Due</th><th></th></tr>'+L.map(c=>`<tr><td>${esc(c.n||'-')}</td><td>${esc(c.ph||'-')}</td><td class="r">${c.b}</td><td class="r">${money(c.sp)}</td><td class="r"><b style="color:${c.due>0?'var(--acc)':'inherit'}">${money(Math.max(c.due,0))}</b></td><td style="white-space:nowrap">${c.due>0?`<button class="btn sm" data-r="${esc(c.k)}">Receive</button> `:''}<button class="btn alt sm" data-h="${esc(c.k)}">History</button> <button class="btn alt sm" data-w="${esc(c.k)}">WhatsApp</button></td></tr>`).join('')+'</table></div>':'<p class="muted">Customers appear here once a bill has a name or mobile number.</p>')}
-$('custBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const m=custData();
+let CSORT=(()=>{try{const o=JSON.parse(localStorage.getItem('bf-csort')||'');if(o&&o.k&&(o.d===1||o.d===-1))return o}catch(e){}return{k:'due',d:-1}})();
+const CSK={due:'Pending amount',name:'Customer name',last:'Latest bill',sp:'Total bought',b:'Number of bills'};
+function custSort(L){const k=CSORT.k,d=CSORT.d;
+ const v=c=>k==='name'?String(c.n||c.ph||'').toLowerCase():k==='last'?(c.lt||0):k==='sp'?c.sp:k==='b'?c.b:c.due;
+ return L.sort((a,b)=>{const x=v(a),y=v(b);let r=(typeof x==='string')?x.localeCompare(y):(x-y);if(!r)r=a.due-b.due;return r*d})}
+function renderCustInner(){
+ const L=custSort(Object.values(custData())),owed=L.reduce((a,c)=>a+Math.max(c.due,0),0);
+ $('custBody').innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><span>Total pending: <b>${money(owed)}</b></span><button class="btn sm" id="cAdd">+ New customer with pending payment</button></div><div class="row" style="align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><span class="muted">Sort by</span><select id="cSortSel" style="width:auto">${Object.entries(CSK).map(([k,n])=>`<option value="${k}"${k===CSORT.k?' selected':''}>${n}</option>`).join('')}</select><button class="btn alt sm" id="cDir">${CSORT.d===1?'▲ Ascending (low → high)':'▼ Descending (high → low)'}</button></div>`+(L.length?'<div class="scroll"><table class="table"><tr><th>Customer</th><th>Mobile</th><th class="r">Bills</th><th class="r">Bought</th><th class="r">Due</th><th></th></tr>'+L.map(c=>`<tr><td>${esc(c.n||'-')}</td><td>${esc(c.ph||'-')}</td><td class="r">${c.b}</td><td class="r">${money(c.sp)}</td><td class="r"><b style="color:${c.due>0?'var(--acc)':'inherit'}">${money(Math.max(c.due,0))}</b></td><td style="white-space:nowrap">${c.due>0?`<button class="btn sm" data-r="${esc(c.k)}">Receive</button> `:''}<button class="btn alt sm" data-h="${esc(c.k)}">History</button> <button class="btn alt sm" data-w="${esc(c.k)}">WhatsApp</button></td></tr>`).join('')+'</table></div>':'<p class="muted">Customers appear here once a bill has a name or mobile number.</p>')}
+function renderCust(){try{renderCustInner()}catch(e){const b=$('custBody');if(b)b.innerHTML='<p style="color:var(--acc);font-weight:700">Could not show pending payments: '+esc(String((e&&e.message)||e))+'</p>'}}
+function cSortSave(){try{localStorage.setItem('bf-csort',JSON.stringify(CSORT))}catch(e){}renderCust()}
+$('custBody').onchange=e=>{if(e.target.id==='cSortSel'){CSORT.k=e.target.value;cSortSave()}};
+$('custBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='cDir'){CSORT.d=-CSORT.d;cSortSave();return}const m=custData();
  if(b.dataset.r){const c=m[b.dataset.r];if(!c)return;
   $('mBody').innerHTML=`<p style="font-size:18px;margin-top:0"><b>Receive payment</b><br><span class="muted">${esc(c.n||c.ph)} owes ${money(c.due)}</span></p><input id="rAmt" type="number" min="1" value="${c.due}" style="margin-bottom:8px"><div class="muted" style="margin-bottom:4px">Customer paid by</div><div class="pills" id="rMeth">${['Cash','UPI'].map((m,i)=>`<label><input type="radio" name="rm" value="${m}"${i?'':' checked'}><span>${m}</span></label>`).join('')}</div><input id="rNote" placeholder="Note / reference (optional)" style="margin:8px 0"><div class="row"><button class="btn" id="rOk">Save payment</button><button class="btn alt" id="rNo">Cancel</button></div>`;
   $('modal').style.display='flex';$('rNo').onclick=closeBill;
@@ -2648,7 +2657,7 @@ $('custBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const 
   $('nCok').onclick=()=>{const n=$('nCn').value.trim(),ph=$('nCp').value.trim(),a=parseFloat($('nCa').value);if(!n&&!ph){toast('Enter the customer name or mobile number');return}if(!(a>0)){toast('Enter the pending amount');return}
    const k=ck({phone:ph,cust:n});S.pays.push({t:Date.now(),k,a:-a,open:1,n,ph,note:$('nCt').value.trim(),by:(window.SYNC&&SYNC.who)||''});save();closeBill();renderCust();toast('Customer added with pending '+money(a))}}
  if(b.dataset.h){const c=m[b.dataset.h];if(!c)return;
-  const L=[];S.sales.filter(x=>!x.void&&ck(x)===c.k&&payAmt(x,'Pay later')>0).forEach(x=>L.push([x.t,'Bill '+bn(x),payAmt(x,'Pay later'),'']));
+  const L=[];S.sales.filter(x=>!x.void&&(ck(x)||'__noname')===c.k&&payAmt(x,'Pay later')>0).forEach(x=>L.push([x.t,'Bill '+bn(x),payAmt(x,'Pay later'),'']));
   S.pays.filter(x=>x.k===c.k).forEach(x=>L.push([x.t,x.open?'Old balance added'+(x.note?' - '+x.note:''):'Received by '+(x.m||'Cash')+(x.note?' - '+x.note:''),-x.a,x.open?'':'ok']));
   L.sort((a,b)=>a[0]-b[0]);
   $('mBody').innerHTML=`<div class="row" style="justify-content:space-between"><b style="font-size:18px">${esc(c.n||c.ph)}</b><button class="btn alt sm" id="hClose">Close</button></div><p class="muted" style="margin:4px 0 8px">Pending now: <b>${money(Math.max(c.due,0))}</b></p><div class="scroll"><table class="table"><tr><th>Date</th><th>Details</th><th class="r">Amount</th></tr>${L.map(x=>`<tr><td style="white-space:nowrap">${new Date(x[0]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td><td>${esc(x[1])}</td><td class="r" style="color:${x[3]?'var(--ok)':'var(--acc)'}">${x[3]?'- ':'+ '}${money(Math.abs(x[2]))}</td></tr>`).join('')||'<tr><td colspan="3">No entries.</td></tr>'}</table></div>`;
@@ -3164,7 +3173,8 @@ $('done').onclick=async function(){
  if(claiming)return;const chk=document.querySelector('input[name=pay]:checked');
  const ok=!EDITNO&&cart.length&&chk&&!nsCheck()&&!(chk.value==='Pay later'&&!$('cust').value.trim()&&!$('phone').value.trim())&&cart.every(l=>find(l.c)&&l.q<=find(l.c).s);
  if(ok&&SYNC.ready){claiming=true;let got=await claimNo();if(!got&&claimErr.indexOf('reserved')>=0){S.set.lockGen=(S.set.lockGen||0)+1;save();try{if(typeof trk==='function')trk('warn','Old bill-number reservations were stuck. Started a fresh set of reservations.','db')}catch(e){}got=await claimNo()}else if(!got){await new Promise(r=>setTimeout(r,1200));got=await claimNo()}claiming=false;if(!got){const why=claimErr||'unknown';try{reportErr('Bill number failed: '+why)}catch(e){}try{if(typeof trk==='function')trk('bad','Could not get a bill number: '+why,'db')}catch(e){}toast(navigator.onLine?'Could not get a bill number ('+why+'). Press the 🔄 button at the top and try again.':'No internet. Check internet and try again');return}}
- _done()};
+ _done();try{const l=S.sales[S.sales.length-1];if(l&&!l.void&&payAmt(l,'Pay later')>0)setTimeout(()=>toast('Saved in Pending Payment: '+money(payAmt(l,'Pay later'))+(l.cust?' ('+l.cust+')':'')),1800)}catch(e){}};
+setInterval(()=>{try{const c=document.querySelector('input[name=pay]:checked'),need=!!c&&(c.value==='Pay later'||(c.value==='Split'&&nsParts().l>0)),e=$('cust');if(!e)return;e.placeholder=need?'Customer name (REQUIRED for Pay later)':'Customer name (optional)';e.style.borderColor=need&&!e.value.trim()&&!$('phone').value.trim()?'var(--acc)':''}catch(x){}},400);
 /* ===== Multi-device sync (Supabase). Works only when a shop code is saved on this PC ===== */
 /* ===== Google Sheets live export: every submitted, edited or cancelled bill goes to the customer's own sheet ===== */
 (function(){
@@ -3813,6 +3823,7 @@ input:focus,select:focus{box-shadow:0 0 0 4px rgba(255,191,46,.22);outline:none}
 .table tbody tr{transition:background .15s}.table tbody tr:hover td{background:rgba(255,191,46,.08)}
 .card{transition:box-shadow .2s,transform .2s}
 .stat{transition:transform .2s,box-shadow .2s}.stat:hover{transform:translateY(-2px)}
+.line{animation:tabIn .25s ease}
 .toast{border-left:4px solid var(--gold);padding-left:14px}
 nav button{position:relative}
 nav button:active{transform:scale(.95)}
@@ -3826,182 +3837,10 @@ document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.c
  d.style.cssText='width:'+s+'px;height:'+s+'px;left:'+(e.clientX-r.left-s/2)+'px;top:'+(e.clientY-r.top-s/2)+'px';
  b.appendChild(d);setTimeout(()=>d.remove(),600)},{passive:true});
 </script>
-<style>
-/* ===== UX layer 2 (look & feel only, no logic changes) ===== */
-.line{animation:none}.line.ln-new{animation:tabIn .28s ease}
-button,.pick,label{touch-action:manipulation}
-td,.tot,.stat b,.lv-box b,.pick .pr,.bdg{font-variant-numeric:tabular-nums}
-/* empty states */
-#cart>p.muted:only-child{margin:6px 0;padding:26px 12px;text-align:center;border:2px dashed var(--line);border-radius:14px;background:rgba(127,127,127,.04)}
-#cart>p.muted:only-child::before{content:"🛒";display:block;font-size:34px;margin-bottom:4px;animation:bob 2.4s ease-in-out infinite}
-#picks:empty{display:block}
-#picks:empty::before{content:"🔍  No items match your search";display:block;padding:28px 12px;text-align:center;color:var(--mute);border:2px dashed var(--line);border-radius:14px}
-/* stock cues */
-.pick.low{border-left:4px solid var(--warn)}
-.pick.out{filter:grayscale(1)}
-.pick.tap{animation:tapRing .45s ease-out}
-@keyframes tapRing{0%{box-shadow:0 0 0 0 rgba(20,153,106,.55)}100%{box-shadow:0 0 0 12px rgba(20,153,106,0)}}
-/* total change */
-.tot.big>span:last-child.bump{display:inline-block;animation:pop .32s cubic-bezier(.2,.9,.3,1.3)}
-/* pills + forms */
-.pills label:has(input:checked) span::before{content:"✓ "}
-.pills label:has(input:checked){box-shadow:0 6px 14px -8px rgba(232,51,74,.7)}
-input[type=number]:invalid:not(:placeholder-shown){border-color:var(--acc)}
-input::placeholder{opacity:.7}
-/* tables */
-.table tbody tr:nth-child(even) td{background:rgba(127,127,127,.045)}
-.table tbody tr:hover td{background:rgba(255,191,46,.1)}
-/* toast types */
-.toast.t-bad{border-left-color:#ff4d63}.toast.t-ok{border-left-color:var(--ok)}
-.toast::before{content:"ℹ️";margin-right:8px}.toast.t-bad::before{content:"⚠️"}.toast.t-ok::before{content:"✅"}
-/* back to top */
-#toTop{position:fixed;right:14px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:9;width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;background:linear-gradient(135deg,var(--gold),#ff9a2e);color:#16203a;font-size:20px;font-weight:800;box-shadow:0 10px 20px -8px rgba(0,0,0,.5);opacity:0;transform:translateY(16px) scale(.8);pointer-events:none;transition:opacity .25s,transform .25s}
-#toTop.on{opacity:1;transform:none;pointer-events:auto}
-@media(max-width:820px){#toTop{bottom:calc(96px + env(safe-area-inset-bottom,0px))}}
-/* offline pill */
-#netPill{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translate(-50%,-70px);z-index:12;background:#c26a05;color:#fff;padding:6px 14px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:0 8px 20px -8px rgba(0,0,0,.5);transition:transform .3s}
-#netPill.on{transform:translate(-50%,0)}
-</style>
-<script>
-(function(){
- const $=id=>document.getElementById(id);
- /* haptic + ring when an item is tapped */
- document.addEventListener('pointerdown',e=>{const p=e.target.closest&&e.target.closest('.pick');if(!p||p.classList.contains('out'))return;
-  p.classList.remove('tap');void p.offsetWidth;p.classList.add('tap');try{navigator.vibrate&&navigator.vibrate(8)}catch(x){}},{passive:true});
- /* animate only a newly added cart line */
- const cart=$('cart');if(cart){let n=0;new MutationObserver(()=>{const L=cart.querySelectorAll('.line');
-  if(L.length>n&&n>=0&&L.length-n===1)L[L.length-1].classList.add('ln-new');n=L.length}).observe(cart,{childList:true})}
- /* pop the grand total when it changes */
- const tt=$('totals');if(tt){let last='';new MutationObserver(()=>{const s=tt.querySelector('.tot.big>span:last-child');if(!s)return;
-  if(last&&s.textContent!==last){s.classList.remove('bump');void s.offsetWidth;s.classList.add('bump')}last=s.textContent}).observe(tt,{childList:true})}
- /* colour the toast by meaning */
- const ts=$('toast');if(ts){new MutationObserver(()=>{const t=ts.textContent;
-  ts.classList.toggle('t-bad',/\b(not|cannot|can't|could not|error|failed|wrong|required|first|already|nothing|invalid|only)\b/i.test(t));
-  ts.classList.toggle('t-ok',!/\b(not|cannot|can't|could not|error|failed|wrong|required|first|already|nothing|invalid|only)\b/i.test(t)&&/\b(saved|updated|added|done|sent|complete|copied|deleted|restored|installed|created)\b/i.test(t))
- }).observe(ts,{childList:true,characterData:true,subtree:true})}
- /* select the number when you tap a number box, so typing replaces it */
- document.addEventListener('focusin',e=>{const i=e.target;if(i.tagName==='INPUT'&&i.type==='number'){setTimeout(()=>{try{i.select()}catch(x){}},0)}});
- /* back-to-top button */
- const up=document.createElement('button');up.id='toTop';up.type='button';up.setAttribute('aria-label','Back to top');up.textContent='↑';
- up.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});document.body.appendChild(up);
- addEventListener('scroll',()=>up.classList.toggle('on',scrollY>500),{passive:true});
- /* press / to jump to the search box (when not typing) */
- document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){const s=$('search');
-  if(s&&$('t-bill').classList.contains('on')){e.preventDefault();s.focus();s.select()}}});
- /* offline / online pill */
- const np=document.createElement('div');np.id='netPill';document.body.appendChild(np);let nt;
- const net=on=>{np.textContent=on?'✅ Back online':'📡 You are offline';np.style.background=on?'#14996a':'#c26a05';np.classList.add('on');clearTimeout(nt);if(on)nt=setTimeout(()=>np.classList.remove('on'),2200)};
- addEventListener('offline',()=>net(false));addEventListener('online',()=>net(true));
-})();
-</script>
-<style>
-/* ===== UX layer 3: spacing, colour meaning, typography, success moment ===== */
-:root{--in:#14996a;--out:#e8334a;--pend:#d98200;--mute:#7a859e}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--in:#35c993;--out:#ff6b7d;--pend:#f0a040;--mute:#98a4c1}}
-:root[data-theme=dark]{--in:#35c993;--out:#ff6b7d;--pend:#f0a040;--mute:#98a4c1}
-/* helper text: lighter grey */
-.muted,small,.table th,.lv-box span{color:var(--mute)}
-.muted{font-weight:500}
-/* spacing + alignment */
-main{padding:16px}.grid{gap:14px}.row{gap:10px}.pills{gap:8px}.stats{gap:12px}
-.tab>.card+.card{margin-top:12px}
-.picks{gap:10px;grid-auto-rows:1fr}.pick{min-height:74px}
-.line{grid-template-columns:minmax(0,1fr) auto minmax(76px,auto) auto;gap:10px;padding:9px 0}
-.line>b{text-align:right}
-.tot{align-items:baseline;padding:4px 0}.tot span:last-child{text-align:right}
-.table th,.table td{padding:9px 10px}
-.table .r{text-align:right}
-input,select{min-height:42px}
-input[type=checkbox],input[type=radio]{min-height:0}
-.q input{min-height:36px}
-/* grand total typography */
-.tot.big{align-items:flex-end;padding-top:12px;margin-top:10px}
-.tot.big span:first-child{font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mute);padding-bottom:8px}
-.tot.big>span:last-child{font-size:46px;font-weight:800;line-height:1;letter-spacing:-1px}
-@media(max-width:600px){.tot.big>span:last-child{font-size:40px}}
-.rs{font-size:.46em;font-weight:700;vertical-align:.62em;margin-right:3px;opacity:.75;letter-spacing:0}
-.stat b{font-weight:800}
-#mBody div[style*="font-size:30px"]{font-size:46px!important;line-height:1.05;letter-spacing:-1px}
-/* colour meaning: green = money in, red = cancelled/returned, amber = pending/low */
-.stat.cm-in,.lv-box.cm-in{border-left:4px solid var(--in)}.stat.cm-in b,.lv-box.cm-in b{color:var(--in)}
-.stat.cm-out,.lv-box.cm-out{border-left:4px solid var(--out)}.stat.cm-out b,.lv-box.cm-out b{color:var(--out)}
-.stat.cm-pend,.lv-box.cm-pend{border-left:4px solid var(--pend)}.stat.cm-pend b,.lv-box.cm-pend b{color:var(--pend)}
-.lv-box[class*=cm-]{border-left-width:4px}
-.table tbody tr.cm-out td{background:rgba(232,51,74,.08)}
-.table tbody tr.cm-out:hover td{background:rgba(232,51,74,.14)}
-.table tbody tr.cm-out td:first-child{box-shadow:inset 4px 0 var(--out)}
-.table tbody tr.cm-out td:not(:last-child){color:var(--out)}
-td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weight:700}
-.pick.low{border-left-color:var(--pend)}.pick.low small.st{color:var(--pend)}
-.pills label:has(input[value=Cash]:checked),.pills label:has(input[value=UPI]:checked),.pills label:has(input[value=Split]:checked){border-color:var(--in);background:rgba(20,153,106,.1)}
-.pills label:has(input[value=Cash]:checked) span,.pills label:has(input[value=UPI]:checked) span,.pills label:has(input[value=Split]:checked) span{color:var(--in)}
-.pills label:has(input[value="Pay later"]:checked){border-color:var(--pend);background:rgba(217,130,0,.1)}
-.pills label:has(input[value="Pay later"]:checked) span{color:var(--pend)}
-/* success moment */
-.okTick{width:84px;height:84px;display:block;margin:0 auto 6px;overflow:visible}
-.okTick .c{fill:rgba(20,153,106,.12);stroke:var(--in);stroke-width:3;stroke-dasharray:145;stroke-dashoffset:145;animation:okC .6s ease-out forwards;transform-origin:center}
-.okTick .k{fill:none;stroke:var(--in);stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:okK .4s .5s ease-out forwards}
-.okTick .p{fill:none;stroke:var(--in);stroke-width:2;opacity:0;transform-origin:center;animation:okP .9s .55s ease-out}
-@keyframes okC{to{stroke-dashoffset:0}}@keyframes okK{to{stroke-dashoffset:0}}
-@keyframes okP{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.6)}}
-.cf{position:fixed;inset:0;pointer-events:none;z-index:31;overflow:hidden}
-.cf i{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;animation:cfall var(--d) cubic-bezier(.3,.6,.5,1) forwards}
-@keyframes cfall{to{transform:translate(var(--dx),105vh) rotate(var(--r))}}
-@media(prefers-reduced-motion:reduce){.okTick .c,.okTick .k{stroke-dashoffset:0}}
-</style>
-<script>
-(function(){
- const $=id=>document.getElementById(id);
- /* rupee sign: smaller and raised */
- function rupee(el){if(el.classList.contains('rs')||el.querySelector('.rs'))return;const t=el.firstChild;if(t&&t.nodeType===3&&/^\s*[−-]?₹/.test(t.nodeValue)){
-  const m=t.nodeValue.match(/^(\s*[−-]?)₹(.*)$/s);const w=document.createElement('span');w.className='rs';w.textContent='₹';
-  const f=document.createDocumentFragment();if(m[1])f.appendChild(document.createTextNode(m[1]));f.appendChild(w);f.appendChild(document.createTextNode(m[2]));el.replaceChild(f,t)}}
- const OUT=/cancel|void|return|refund/i,PEND=/pending|pay later|due\b|owed|outstanding|credit|low stock|low\b/i,IN=/cash|upi|card|sales|collected|received|income|profit|revenue|paid/i;
- const MONEY=/^[−-]?\s*₹\s*[\d,]+(\.\d+)?$/;
- const SEEN=new WeakSet();
- function kind(txt){return OUT.test(txt)?'out':PEND.test(txt)?'pend':IN.test(txt)?'in':''}
- function scan(){
-  document.querySelectorAll('.stat,.lv-box').forEach(b=>{const l=b.querySelector('span');if(!l)return;const k=kind(l.textContent);
-   b.classList.remove('cm-in','cm-out','cm-pend');if(k)b.classList.add('cm-'+k)});
-  document.querySelectorAll('.stat b,.lv-box b,.tot.big>span:last-child,#barTxt b,#mBody div[style*="font-size:30px"]').forEach(rupee);
-  document.querySelectorAll('.table').forEach(t=>{
-   const rows=t.querySelectorAll('tr'),head=rows[0]&&rows[0].querySelector('th')?rows[0]:null;
-   rows.forEach(tr=>{if(SEEN.has(tr)||tr.querySelector('th'))return;SEEN.add(tr);let out=false;
-    Array.from(tr.children).forEach((td,i)=>{const s=td.textContent.trim();
-     if(/^(cancelled|void|voided)$/i.test(s))out=true;
-     if(MONEY.test(s)){td.classList.add('r');if(head&&head.children[i])head.children[i].classList.add('r')}
-     if(!td.querySelector('button')){if(/^(pay later|pending|due)/i.test(s))td.classList.add('cm-pend');else if(/^(cash|upi|card)$/i.test(s))td.classList.add('cm-in')}});
-    tr.classList.toggle('cm-out',out)})});
- }
- let q=0;new MutationObserver(()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;scan()})}).observe(document.body,{childList:true,subtree:true});
- scan();
- /* success moment when a bill is completed */
- function confetti(){
-  if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-  const c=document.createElement('div');c.className='cf';const cols=['#e8334a','#ffc233','#14996a','#2f7de1','#ff7a18','#a855f7'];
-  for(let i=0;i<70;i++){const p=document.createElement('i');
-   p.style.cssText='left:'+(Math.random()*100)+'%;background:'+cols[i%6]+';--dx:'+((Math.random()-.5)*180)+'px;--r:'+(360+Math.random()*720)+'deg;--d:'+(1.8+Math.random()*1.4)+'s;animation-delay:'+(Math.random()*.5)+'s';c.appendChild(p)}
-  document.body.appendChild(c);setTimeout(()=>c.remove(),3800)}
- const mb=$('mBody');if(mb)new MutationObserver(()=>{
-  const e=mb.querySelector('#dNew');if(!e)return;const t=mb.querySelector('div[style*="font-size:40px"]');
-  if(t&&t.textContent.trim()==='✅'){
-   t.outerHTML='<svg class="okTick" viewBox="0 0 52 52"><circle class="p" cx="26" cy="26" r="24"/><circle class="c" cx="26" cy="26" r="23"/><path class="k" d="M15 27l8 8 14-16"/></svg>';
-   confetti();try{navigator.vibrate&&navigator.vibrate([15,50,25])}catch(x){}}
- }).observe(mb,{childList:true,subtree:true});
-})();
-</script>
-<style>
-/* ===== fixes ===== */
-@media(max-width:820px){main,main:has(#t-bill.on){padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}}
-.table td input,.table td select{min-height:34px}
-#done{flex:1 1 160px!important;white-space:nowrap;min-width:140px}
-.btn{white-space:nowrap}
-#sendWa,#sendImg{white-space:nowrap}
-</style>
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.2.4';                                   /* change this on every release */
+ const APP_VERSION='1.2.3';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4011,10 +3850,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
  const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const buzz=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
- let latest=null,checking=false,running=false,wantManual=false;
- const PREV='sb-prev-ver';
- const canBack=()=>LAUNCH&&!!LS(PREV)&&(LS(PREV)==='previous'||cmp(LS(PREV),APP_VERSION)<0);
- const prevLabel=()=>LS(PREV)==='previous'?'the previous version':'version '+LS(PREV);
+ let latest=null,checking=false,running=false;
 
  const css=document.createElement('style');
  css.textContent=
@@ -4093,7 +3929,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
    +(o.body?'<div class="ub">'+esc(o.body)+'</div>':'')
    +(o.notes?'<div class="un"><b>What’s new</b>'+esc(o.notes)+'</div>':'')+'<div class="ur"></div>');
   const row=el.querySelector('.ur');let first=null;
-  (o.buttons||[]).forEach((b,i)=>{const x=document.createElement('button');x.textContent=b.t;if(b.p)x.className='p';if(i===0&&!b.p&&!b.nox)first=x;
+  (o.buttons||[]).forEach((b,i)=>{const x=document.createElement('button');x.textContent=b.t;if(b.p)x.className='p';if(i===0&&!b.p)first=x;
    x.onclick=()=>{close();if(b.fn)setTimeout(b.fn,120)};row.appendChild(x)});
   const pri=row.querySelector('.p');if(pri)setTimeout(()=>pri.focus(),50);
   escFn=first?()=>first.click():null;
@@ -4101,7 +3937,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
   return el;
  }
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&escFn)escFn()});
- const fail=(msg,retry)=>{buzz([40,60,40]);modal({icon:'⚠️',kind:'bad',title:retry?'Could not go back':'Update not installed',body:msg,buttons:[{t:'Close'},{t:'Try again',p:1,fn:retry||(()=>check(true))}]})};
+ const fail=msg=>{buzz([40,60,40]);modal({icon:'⚠️',kind:'bad',title:'Update not installed',body:msg,buttons:[{t:'Close'},{t:'Try again',p:1,fn:()=>check(true)}]})};
 
  /* ---------- setup-page card + nav dot ---------- */
  function ago(){const t=+LS('sb-upd-last');if(!t)return 'Not checked yet';const m=Math.round((Date.now()-t)/60000);return 'Checked '+(m<1?'just now':m<60?m+' min ago':new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}
@@ -4114,7 +3950,6 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
   c.querySelector('.us').textContent='Installed version '+APP_VERSION+' · '+(checking?'please wait':ago());
   const b=c.querySelector('#updCheck');b.disabled=checking;
   b.innerHTML=checking?'<span class="mini"></span>Checking…':latest?'⬇️ Download &amp; install':'Check for update';
-  const bk=c.querySelector('#updBack');if(bk){bk.style.display=canBack()?'':'none';if(canBack())bk.textContent='↩ Go back to '+prevLabel()}
  }
 
  /* ---------- banner ---------- */
@@ -4138,27 +3973,26 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
  }
 
  /* ---------- progress screen ---------- */
- const MODES={u:{steps:['Download','Verify','Install','Restart'],msg:['Downloading update…','Checking the update is safe…','Installing the new version…','Restarting the app…'],tx:['Downloading','Verifying files','Installing','Almost done']},
-  r:{steps:['Prepare','Check','Restore','Restart'],msg:['Preparing to go back…','Checking the saved version…','Restoring the previous version…','Restarting the app…'],tx:['Preparing','Checking files','Restoring','Almost done']}};
- function progressUI(info,rb){
-  const M=rb?MODES.r:MODES.u;
-  const el=open('<div class="ring"></div><h3>'+(rb?'Going back to '+esc(info.version?'v'+info.version:'the previous version'):'Updating to v'+esc(info.version))+'</h3><div class="ub" id="upSub">'+M.msg[0]+'</div>'
+ const STEPS=['Download','Verify','Install','Restart'];
+ function progressUI(info){
+  const el=open('<div class="ring"></div><h3>Updating to v'+esc(info.version)+'</h3><div class="ub" id="upSub">Downloading update…</div>'
    +'<div class="pg"><i id="upBar"></i></div><div class="pp"><span id="upTxt">Starting…</span><span id="upPct">0%</span></div>'
-   +'<div class="st">'+M.steps.map((s,i)=>'<div data-i="'+i+'"><b>'+(i+1)+'</b>'+s+'</div>').join('')+'</div>'
+   +'<div class="st">'+STEPS.map((s,i)=>'<div data-i="'+i+'"><b>'+(i+1)+'</b>'+s+'</div>').join('')+'</div>'
    +'<div class="tip">Please keep the app open — your data is safe.</div>');
   const sub=el.querySelector('#upSub'),bar=el.querySelector('#upBar'),pct=el.querySelector('#upPct'),txt=el.querySelector('#upTxt');
-  const msgs=M.msg,tx=M.tx;
+  const msgs=['Downloading update…','Checking the update is safe…','Installing the new version…','Restarting the app…'];
+  const tx=['Downloading','Verifying files','Installing','Almost done'];
   return {el,set(p,stage){bar.style.width=p+'%';pct.textContent=Math.round(p)+'%';sub.textContent=msgs[stage];txt.textContent=tx[stage];
    el.querySelectorAll('.st div').forEach((d,i)=>{d.className=i<stage?'dn':i===stage?'on':'';if(i<stage)d.querySelector('b').textContent='✓'})}};
  }
 
  /* real installation work — resolves when installed, rejects with a message */
- function status(tok,rb){
+ function status(tok){
   return new Promise((res,rej)=>{
    let n=0;
    const iv=setInterval(()=>{
     n++;
-    if(n>(rb?30:75)){clearInterval(iv);rej(rb?'Going back did not start. This needs the newest installer: install again from the latest ShopBilling.zip, then try once more.':'The update did not start. Press Update again and choose “Open” when Windows or the browser asks. Tick “Always allow” so it does not ask again.');return}
+    if(n>75){clearInterval(iv);rej('The update did not start. Press Update again and choose “Open” when Windows or the browser asks. Tick “Always allow” so it does not ask again.');return}
     window.__upd=null;
     const s=document.createElement('script');s.src='update_status.js?t='+Date.now();
     s.onload=()=>{const u=window.__upd;s.remove();
@@ -4168,27 +4002,25 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
    },1000);
   });
  }
- async function apply(info,rb){
+ async function apply(info){
   try{if(typeof saveDraft==='function')saveDraft();if(typeof save==='function')save()}catch(e){}
-  LS('sb-upd-pending',JSON.stringify({v:info.version,notes:info.notes||'',from:APP_VERSION,rb:rb?1:0}));
+  LS('sb-upd-pending',JSON.stringify({v:info.version,notes:info.notes||''}));
   if(HTTP){
    try{await fetch(location.href.split('#')[0],{cache:'reload'})}catch(e){}
   }else if(LAUNCH){
    const tok=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
-   const a=document.createElement('a');a.href='shopbillingupdate:'+(rb?'rb.':'')+tok;document.body.appendChild(a);a.click();a.remove();
-   await status(tok,rb);
+   const a=document.createElement('a');a.href='shopbillingupdate:'+tok;document.body.appendChild(a);a.click();a.remove();
+   await status(tok);
   }
  }
- async function run(info,rb){
-  if(rb&&!LAUNCH){modal({icon:'ℹ️',title:'Available in the installed app',body:'Going back works in the Windows app installed with the installer.',buttons:[{t:'OK',p:1}]});return}
+ async function run(info){
   if(!HTTP&&!LAUNCH){
    if(info.url)window.open(info.url,'_blank');
    modal({icon:'ℹ️',title:'Install from the Desktop app',body:'This copy cannot update itself. Please install Shop Billing with the installer from your software provider.',buttons:[{t:'OK',p:1}]});
    return;
   }
   if(running)return;running=true;
-  if(rb)LS('sb-upd-skip',APP_VERSION);
-  const ui=progressUI(info,rb);let p=0,real=false,err=null;
+  const ui=progressUI(info);let p=0,real=false,err=null;
   const stageOf=v=>v<30?0:v<58?1:v<100?2:3;
   const tick=setInterval(()=>{
    const cap=real?100:88;
@@ -4196,37 +4028,21 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
    ui.set(p,stageOf(p));
   },90);
   try{
-   await Promise.all([apply(info,rb),wait(2600)]);
+   await Promise.all([apply(info),wait(2600)]);
    real=true;
    await new Promise(r=>{const w=setInterval(()=>{if(p>=100){clearInterval(w);r()}},60)});
   }catch(e){err=typeof e==='string'?e:'Please check the internet and try again.'}
   clearInterval(tick);running=false;
-  if(err){LS('sb-upd-pending','');fail(err,rb?()=>run(info,true):null);return}
+  if(err){LS('sb-upd-pending','');fail(err);return}
   ui.set(100,3);
   await wait(450);
-  if(rb)modal({kind:'ok',title:'Previous version restored',body:'Restarting the app…'});
-  else modal({kind:'ok',title:'Update installed',chip:['v'+APP_VERSION,'v'+info.version],body:'Restarting the app…'});
+  modal({kind:'ok',title:'Update installed',chip:['v'+APP_VERSION,'v'+info.version],body:'Restarting the app…'});
   setTimeout(()=>location.reload(),1700);
  }
 
- /* ---------- go back to the previous version ---------- */
- function askBack(){
-  if(!canBack())return;
-  const pv=LS(PREV)==='previous'?'':LS(PREV);
-  modal({icon:'↩️',kind:'new',title:'Go back to '+prevLabel()+'?',body:'Use this if the new version is giving trouble. Your bills and data stay safe. You can update again later.',
-   buttons:[{t:'Stay on this version'},{t:'↩ Go back',p:1,fn:()=>run({version:pv},true)}]});
- }
- /* a few errors right after an update: offer to go back */
- (function(){let n=0;addEventListener('error',e=>{
-  if(!canBack()||running||Date.now()-(+LS('sb-upd-at')||0)>600000)return;
-  if(/ResizeObserver|Script error/i.test(e.message||''))return;
-  if(++n===3)modal({icon:'🛠️',kind:'bad',title:'Something looks wrong',body:'The app had a few errors right after the update. You can go back to the previous version.',buttons:[{t:'Keep this version'},{t:'↩ Go back',p:1,fn:askBack}]})})})();
-
  /* ---------- check ---------- */
  async function check(manual){
-  if(!UPDATE_URL)return;
-  if(checking){if(manual&&!wantManual){wantManual=true;modal({spin:1,title:'Checking for updates…',body:'Contacting your software provider'})}return}
-  if(running&&!manual)return;
+  if(!UPDATE_URL||checking)return;
   checking=true;paint();
   const t0=Date.now();
   if(manual)modal({spin:1,title:'Checking for updates…',body:'Contacting your software provider'});
@@ -4238,7 +4054,6 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
    if(!r.ok)throw 0;
    info=await r.json();LS('sb-upd-last',String(Date.now()));
   }catch(e){bad=true}
-  if(wantManual){manual=true;wantManual=false}
   if(manual){const left=1300-(Date.now()-t0);if(left>0)await wait(left)}
   checking=false;
   const newer=!bad&&info&&info.version&&cmp(info.version,APP_VERSION)>0;
@@ -4257,11 +4072,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
   const raw=LS('sb-upd-pending');
   if(raw){LS('sb-upd-pending','');const p=JSON.parse(raw);
    setTimeout(()=>{
-    if(p.rb){
-     if(cmp(APP_VERSION,p.from||'999')<0){LS(PREV,'');paint();modal({kind:'ok',title:'Back on v'+APP_VERSION,body:'The previous version is restored. Your bills and data are safe.',buttons:[{t:'Continue',p:1}]})}
-     else fail('The app is still on version '+APP_VERSION+'. Please try again.')}
-    else if(cmp(APP_VERSION,p.v)>=0){LS(PREV,p.from||'previous');LS('sb-upd-at',String(Date.now()));paint();
-     modal({kind:'ok',title:'Updated to v'+APP_VERSION,body:'Your software provider has installed a new patch. Thank you for using Shop Billing.',notes:p.notes,buttons:(LAUNCH?[{t:'↩ Undo update',nox:1,fn:askBack}]:[]).concat([{t:'Continue',p:1}])})}
+    if(cmp(APP_VERSION,p.v)>=0)modal({kind:'ok',title:'Updated to v'+APP_VERSION,body:'Your software provider has installed a new patch. Thank you for using Shop Billing.',notes:p.notes,buttons:[{t:'Continue',p:1}]});
     else fail('The app is still on version '+APP_VERSION+'. Please try again.');
    },900);
   }
@@ -4269,9 +4080,8 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 
  const ts=document.getElementById('t-setup');
  if(ts){
-  ts.insertAdjacentHTML('afterbegin','<div class="card updCard" id="updCard" style="margin-bottom:10px"><div class="ud"><div class="ut"><i class="dot"></i><span></span></div><div class="us"></div><button class="btn alt sm" id="updBack" type="button" style="display:none;margin-top:8px"></button></div><button class="btn" id="updCheck">Check for update</button></div>');
+  ts.insertAdjacentHTML('afterbegin','<div class="card updCard" id="updCard" style="margin-bottom:10px"><div class="ud"><div class="ut"><i class="dot"></i><span></span></div><div class="us"></div></div><button class="btn" id="updCheck">Check for update</button></div>');
   document.getElementById('updCheck').onclick=()=>{if(latest)offer(latest);else check(true)};
-  document.getElementById('updBack').onclick=()=>askBack();
   paint();
  }
  window.checkForUpdate=()=>check(true);
