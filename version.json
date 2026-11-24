@@ -1,6 +1,6 @@
 {
-  "version": "1.2.1",
-  "notes": "Smoother, friendlier app: nicer empty screens, colour-coded messages, animated totals and tap feedback.\nNew back-to-top button, offline notice, and press / to search.\nAll your bills and data stay exactly as they are.",
+  "version": "1.2.2",
+  "notes": "Bigger, clearer Total with a neat rupee sign.\nGreen for money in, red for cancelled bills, amber for pending and low stock.\nNew animated tick and confetti when a bill is completed.\nTidier spacing and aligned money columns on every screen.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

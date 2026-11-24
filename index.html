@@ -3894,10 +3894,105 @@ input::placeholder{opacity:.7}
  addEventListener('offline',()=>net(false));addEventListener('online',()=>net(true));
 })();
 </script>
+<style>
+/* ===== UX layer 3: spacing, colour meaning, typography, success moment ===== */
+:root{--in:#14996a;--out:#e8334a;--pend:#d98200;--mute:#7a859e}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--in:#35c993;--out:#ff6b7d;--pend:#f0a040;--mute:#98a4c1}}
+:root[data-theme=dark]{--in:#35c993;--out:#ff6b7d;--pend:#f0a040;--mute:#98a4c1}
+/* helper text: lighter grey */
+.muted,small,.table th,.lv-box span{color:var(--mute)}
+.muted{font-weight:500}
+/* spacing + alignment */
+main{padding:16px}.grid{gap:14px}.row{gap:10px}.pills{gap:8px}.stats{gap:12px}
+.tab>.card+.card{margin-top:12px}
+.picks{gap:10px;grid-auto-rows:1fr}.pick{min-height:74px}
+.line{grid-template-columns:minmax(0,1fr) auto minmax(76px,auto) auto;gap:10px;padding:9px 0}
+.line>b{text-align:right}
+.tot{align-items:baseline;padding:4px 0}.tot span:last-child{text-align:right}
+.table th,.table td{padding:9px 10px}
+.table .r{text-align:right}
+input,select{min-height:42px}
+input[type=checkbox],input[type=radio]{min-height:0}
+.q input{min-height:36px}
+/* grand total typography */
+.tot.big{align-items:flex-end;padding-top:12px;margin-top:10px}
+.tot.big span:first-child{font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mute);padding-bottom:8px}
+.tot.big span:last-child{font-size:46px;font-weight:800;line-height:1;letter-spacing:-1px}
+@media(max-width:600px){.tot.big span:last-child{font-size:40px}}
+.rs{font-size:.46em;font-weight:700;vertical-align:.62em;margin-right:3px;opacity:.75;letter-spacing:0}
+.stat b{font-weight:800}
+#mBody div[style*="font-size:30px"]{font-size:46px!important;line-height:1.05;letter-spacing:-1px}
+/* colour meaning: green = money in, red = cancelled/returned, amber = pending/low */
+.stat.cm-in,.lv-box.cm-in{border-left:4px solid var(--in)}.stat.cm-in b,.lv-box.cm-in b{color:var(--in)}
+.stat.cm-out,.lv-box.cm-out{border-left:4px solid var(--out)}.stat.cm-out b,.lv-box.cm-out b{color:var(--out)}
+.stat.cm-pend,.lv-box.cm-pend{border-left:4px solid var(--pend)}.stat.cm-pend b,.lv-box.cm-pend b{color:var(--pend)}
+.lv-box[class*=cm-]{border-left-width:4px}
+.table tbody tr.cm-out td{background:rgba(232,51,74,.08)}
+.table tbody tr.cm-out:hover td{background:rgba(232,51,74,.14)}
+.table tbody tr.cm-out td:first-child{box-shadow:inset 4px 0 var(--out)}
+.table tbody tr.cm-out td:not(:last-child){color:var(--out)}
+td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weight:700}
+.pick.low{border-left-color:var(--pend)}.pick.low small.st{color:var(--pend)}
+.pills label:has(input[value=Cash]:checked),.pills label:has(input[value=UPI]:checked),.pills label:has(input[value=Split]:checked){border-color:var(--in);background:rgba(20,153,106,.1)}
+.pills label:has(input[value=Cash]:checked) span,.pills label:has(input[value=UPI]:checked) span,.pills label:has(input[value=Split]:checked) span{color:var(--in)}
+.pills label:has(input[value="Pay later"]:checked){border-color:var(--pend);background:rgba(217,130,0,.1)}
+.pills label:has(input[value="Pay later"]:checked) span{color:var(--pend)}
+/* success moment */
+.okTick{width:84px;height:84px;display:block;margin:0 auto 6px;overflow:visible}
+.okTick .c{fill:rgba(20,153,106,.12);stroke:var(--in);stroke-width:3;stroke-dasharray:145;stroke-dashoffset:145;animation:okC .6s ease-out forwards;transform-origin:center}
+.okTick .k{fill:none;stroke:var(--in);stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:okK .4s .5s ease-out forwards}
+.okTick .p{fill:none;stroke:var(--in);stroke-width:2;opacity:0;transform-origin:center;animation:okP .9s .55s ease-out}
+@keyframes okC{to{stroke-dashoffset:0}}@keyframes okK{to{stroke-dashoffset:0}}
+@keyframes okP{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.6)}}
+.cf{position:fixed;inset:0;pointer-events:none;z-index:31;overflow:hidden}
+.cf i{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;animation:cfall var(--d) cubic-bezier(.3,.6,.5,1) forwards}
+@keyframes cfall{to{transform:translate(var(--dx),105vh) rotate(var(--r))}}
+@media(prefers-reduced-motion:reduce){.okTick .c,.okTick .k{stroke-dashoffset:0}}
+</style>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ /* rupee sign: smaller and raised */
+ function rupee(el){const t=el.firstChild;if(t&&t.nodeType===3&&/^\s*[−-]?₹/.test(t.nodeValue)){
+  const m=t.nodeValue.match(/^(\s*[−-]?)₹(.*)$/s);const w=document.createElement('span');w.className='rs';w.textContent='₹';
+  const f=document.createDocumentFragment();if(m[1])f.appendChild(document.createTextNode(m[1]));f.appendChild(w);f.appendChild(document.createTextNode(m[2]));el.replaceChild(f,t)}}
+ const OUT=/cancel|void|return|refund/i,PEND=/pending|pay later|due\b|owed|outstanding|credit|low stock|low\b/i,IN=/cash|upi|card|sales|collected|received|income|profit|revenue|paid/i;
+ const MONEY=/^[−-]?\s*₹\s*[\d,]+(\.\d+)?$/;
+ function kind(txt){return OUT.test(txt)?'out':PEND.test(txt)?'pend':IN.test(txt)?'in':''}
+ function scan(){
+  document.querySelectorAll('.stat,.lv-box').forEach(b=>{const l=b.querySelector('span');if(!l)return;const k=kind(l.textContent);
+   b.classList.remove('cm-in','cm-out','cm-pend');if(k)b.classList.add('cm-'+k)});
+  document.querySelectorAll('.stat b,.lv-box b,.tot.big span:last-child,#barTxt b,#mBody div[style*="font-size:30px"]').forEach(rupee);
+  document.querySelectorAll('.table').forEach(t=>{
+   t.querySelectorAll('tbody tr').forEach(tr=>{
+    const c=tr.cloneNode(true);c.querySelectorAll('button,input,select,textarea').forEach(x=>x.remove());
+    tr.classList.toggle('cm-out',/cancel|void/i.test(c.textContent));
+    Array.from(tr.children).forEach((td,i)=>{const s=td.textContent.trim();
+     if(td.tagName==='TD'&&MONEY.test(s)){td.classList.add('r');const h=t.querySelector('thead tr')&&t.querySelector('thead tr').children[i];if(h)h.classList.add('r')}
+     td.classList.toggle('cm-pend',td.tagName==='TD'&&/^(pay later|pending|due)/i.test(s)&&!td.querySelector('button'));
+     td.classList.toggle('cm-in',td.tagName==='TD'&&/^(cash|upi|card)$/i.test(s))})})});
+ }
+ let q=0;new MutationObserver(()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;scan()})}).observe(document.body,{childList:true,subtree:true});
+ scan();
+ /* success moment when a bill is completed */
+ function confetti(){
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  const c=document.createElement('div');c.className='cf';const cols=['#e8334a','#ffc233','#14996a','#2f7de1','#ff7a18','#a855f7'];
+  for(let i=0;i<70;i++){const p=document.createElement('i');
+   p.style.cssText='left:'+(Math.random()*100)+'%;background:'+cols[i%6]+';--dx:'+((Math.random()-.5)*180)+'px;--r:'+(360+Math.random()*720)+'deg;--d:'+(1.8+Math.random()*1.4)+'s;animation-delay:'+(Math.random()*.5)+'s';c.appendChild(p)}
+  document.body.appendChild(c);setTimeout(()=>c.remove(),3800)}
+ const mb=$('mBody');if(mb)new MutationObserver(()=>{
+  const e=mb.querySelector('#dNew');if(!e)return;const t=mb.querySelector('div[style*="font-size:40px"]');
+  if(t&&t.textContent.trim()==='✅'){
+   t.outerHTML='<svg class="okTick" viewBox="0 0 52 52"><circle class="p" cx="26" cy="26" r="24"/><circle class="c" cx="26" cy="26" r="23"/><path class="k" d="M15 27l8 8 14-16"/></svg>';
+   confetti();try{navigator.vibrate&&navigator.vibrate([15,50,25])}catch(x){}}
+ }).observe(mb,{childList:true,subtree:true});
+})();
+</script>
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.2.1';                                   /* change this on every release */
+ const APP_VERSION='1.2.2';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
