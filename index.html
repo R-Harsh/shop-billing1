@@ -358,9 +358,6 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
   <p><label>Shop name<input id="sName" placeholder="Your shop name"></label></p>
   <p><label>Shop phone number (shown on the idle signboard)<input id="sPhone" type="tel" inputmode="tel" maxlength="40" placeholder="e.g. 98765 43210"></label></p>
   <p><label>Licence number (optional)<input id="sLic" placeholder="If your shop needs one"></label></p>
-  <p><label>GST handling
-   <select id="sMode"><option value="none">No GST on bill</option><option value="incl">Prices already include GST</option><option value="excl">Add GST on top of prices</option></select></label></p>
-  <p><label>GST rate (%)<input id="sRate" type="number" min="0"></label></p>
   <p><label>UPI ID (shows a QR code with the exact bill amount)<input id="sUpi" placeholder="shopname@upi" autocomplete="off" autocapitalize="off"></label></p>
   <p><label>Bill greeting / Diwali quote (leave empty to use a different Diwali quote on each bill)<input id="sQuote" maxlength="140" placeholder="May this Diwali bring joy and prosperity to your home"></label></p>
   <p><label>Low-stock level<input id="sLow" type="number" min="0"></label></p>
@@ -399,7 +396,7 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
    <div class="row" style="margin-top:6px"><input id="sumPh" type="tel" inputmode="numeric" maxlength="15" placeholder="Owner WhatsApp number"><input id="sumTm" type="time" style="width:130px"></div>
    <div class="row" style="margin-top:8px"><button class="btn sm" id="sumSave">Save</button><button class="btn alt sm" id="sumNow">Send today's summary now</button></div></div>
   <div id="abCard" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px"></div>
-  <p class="muted">The sample prices are typical retail rates for a stall. Replace them with your own price list in Items &amp; stock. Confirm GST rules with your CA.</p>
+  <p class="muted">The sample prices are typical retail rates for a stall. Replace them with your own price list in Items &amp; stock.</p>
   <div id="notesBox" style="margin:14px 0"><b>📝 Notes</b> <span class="muted" id="notesInfo" style="font-size:13px"></span>
    <textarea id="sNotes" rows="6" maxlength="20000" placeholder="Write your notes here (supplier numbers, reminders, anything). Saved automatically." style="width:100%;margin-top:6px;background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit"></textarea></div>
   <button class="btn alt" id="reset">Reset all data</button>
@@ -427,7 +424,7 @@ const editSale=()=>EDITNO?S.sales.find(x=>x.no==EDITNO):null;
 const bp=it=>S.set&&S.set.surge&&it.s<=(S.set.low||0)?Math.round(it.p*(1+(S.set.spct||15)/100)):it.p;
 const gi=l=>{const it=S.items.find(i=>i.c===l.c);return{c:l.c,n:it?it.n:(l.n||l.c),p:l.p!==undefined?l.p:(it?bp(it):0),k:l.k!==undefined?l.k:(it?it.k:0),s:it?it.s:0}};
 const av=l=>{const s=editSale(),o=s?((s.lines.find(x=>x.c===l.c)||{}).q||0):0,it=S.items.find(i=>i.c===l.c);return(it?it.s:0)+o};
-const gst=()=>{const s=editSale();return s?{mode:s.mode,rate:s.rate}:S.set};
+const gst=()=>{const s=editSale();return s?{mode:s.mode,rate:s.rate}:{mode:'none',rate:0}};
 let saveFail=false;
 const save=()=>{if(typeof syncPush==='function')syncPush();if(typeof trkSaved==='function')trkSaved();if(typeof sheetKick==='function')sheetKick();try{localStorage.setItem(KEY,JSON.stringify(S));if(saveFail){saveFail=false;backupUi()}return true}catch(e){saveFail=true;backupUi();toast('Could not save. Take a backup now.');return false}};
 const DKEY=KEY+'-draft';
@@ -2094,7 +2091,7 @@ $('done').onclick=()=>{
  const t=calc();
  const lines=cart.map(l=>{const it=find(l.c);return{c:l.c,n:it.n,p:bp(it),k:it.k,q:l.q}});
  for(const l of cart){if(l.q>find(l.c).s){toast('Stock changed for '+find(l.c).n);return}}
- const sale={no:S.next,t:Date.now(),by:SYNC.who||'',lines,sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:S.set.mode,rate:S.set.rate,
+ const sale={no:S.next,t:Date.now(),by:SYNC.who||'',lines,sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:'none',rate:0,
   pay:SP?'Split':document.querySelector('input[name=pay]:checked').value,cust:$('cust').value.trim(),phone:$('phone').value.trim()};if(SP)sale.split=SP;
  cart.forEach(l=>{find(l.c).s-=l.q});
  S.sales.push(sale);S.next++;save();try{milestoneCheck();goalsCheck()}catch(e){}
@@ -2509,10 +2506,10 @@ function repHtml(key){
  const mg=p.net>0?(p.gp/p.net*100).toFixed(1)+'%':'0%';
  return `<div class="scroll"><table class="table"><tr><th>Profit &amp; loss</th><th class="r">Amount</th></tr>`+
   tr('Bills',p.n)+tr('Sales at list price',R(p.gross))+tr('Less discounts','−'+R(p.disc))+(p.adj?tr('Less short-pay adjustments','−'+R(p.adj)):'')+
-  (S.set.mode==='incl'?tr('Less GST included in prices','−'+R(p.gst)):'')+
+  (p.gst>0?tr('Less GST (old bills)','−'+R(p.gst)):'')+
   tr('Net sales',R(p.net),1)+tr('Cost of goods sold','−'+R(p.cogs))+tr('Gross profit ('+mg+' margin)',R(p.gp),1)+
   tr('Day expenses','−'+R(p.e))+tr('Net profit',R(p.np),1)+`</table>`+
-  (S.set.mode!=='none'?`<p class="muted">GST collected today: ${R(p.gst)}. This is payable to the government and is not part of profit.</p>`:'')+
+  (p.gst>0?`<p class="muted">GST collected today: ${R(p.gst)}. This is payable to the government and is not part of profit.</p>`:'')+
   `<table class="table"><tr><th>Payments received</th><th class="r">Amount</th></tr>${p.pay.filter(x=>x[0]!=='Card'||x[1]>0).map(x=>tr(x[0],R(x[1]))).join('')}</table>`+
   (()=>{const c=S.pays.filter(x=>!x.open&&!x.cb&&dk(x.t)===key);if(!c.length)return'';const t={};c.forEach(x=>{const m=x.m||'Cash';t[m]=(t[m]||0)+x.a});return`<table class="table"><tr><th>Pay-later money collected</th><th class="r">Amount</th></tr>${Object.entries(t).map(([m,v])=>tr(m,R(v))).join('')}</table>`})()+
   `<table class="table"><tr><th>Item</th><th class="r">Qty</th><th class="r">Sales</th><th class="r">Cost</th><th class="r">Profit</th></tr>${p.rows.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="r">${v.q}</td><td class="r">${R(v.a)}</td><td class="r">${R(v.c)}</td><td class="r">${R(v.a-v.c)}</td></tr>`).join('')||'<tr><td colspan="5">No sales on this date.</td></tr>'}</table>`+
@@ -2640,9 +2637,9 @@ $('dpSave').onclick=()=>{const a=[];for(let i=0;i<3;i++){let v=parseFloat($('dpv
  S.set.dp=a;S.set.dauto=$('dpAuto').checked;save();dpLoad();renderCart();toast('Discounts saved')};
 $('sSurgeSave').onclick=()=>{S.set.surge=$('sSurge').checked;S.set.spct=parseFloat($('sSpct').value)||15;save();refresh();toast('Saved')};
 function dpLoad(){const P=dpr();P.forEach((p,i)=>{const m=$('dpm'+i),v=$('dpv'+i);if(m&&document.activeElement!==m)m.value=p.m;if(v&&document.activeElement!==v)v.value=p.v});$('dpAuto').checked=S.set.dauto!==false}
-function loadSetup(){dpLoad();exLoad();goalsUi();$('sPhone').value=S.set.phone||'';sumLoad();const s=S.set;{const nb=$('sNotes');if(nb&&document.activeElement!==nb)nb.value=s.notes||'';const ni=$('notesInfo');if(ni)ni.textContent=s.notesAt?'Saved '+new Date(s.notesAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}$('sName').value=s.name;$('sLic').value=s.lic;$('sMode').value=s.mode;$('sRate').value=s.rate;$('sLow').value=s.low;$('sUpi').value=s.upi||'';$('sQuote').value=s.quote||'';$('sSurge').checked=!!s.surge;$('sSpct').value=s.spct||15;$('sPin').value=myPin();$('sPinLbl').textContent='PIN for '+(SYNC.who||'this phone')}
-['sName','sPhone','sLic','sMode','sRate','sLow','sUpi','sQuote'].forEach(id=>$(id).onchange=()=>{
- S.set=Object.assign({},S.set,{name:$('sName').value.trim()||'MY SHOP',lic:$('sLic').value.trim(),mode:$('sMode').value,rate:parseFloat($('sRate').value)||0,low:parseInt($('sLow').value)||0,upi:$('sUpi').value.trim(),quote:$('sQuote').value.trim(),phone:$('sPhone').value.trim(),pin:S.set.pin||''});
+function loadSetup(){dpLoad();exLoad();goalsUi();$('sPhone').value=S.set.phone||'';sumLoad();const s=S.set;{const nb=$('sNotes');if(nb&&document.activeElement!==nb)nb.value=s.notes||'';const ni=$('notesInfo');if(ni)ni.textContent=s.notesAt?'Saved '+new Date(s.notesAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}$('sName').value=s.name;$('sLic').value=s.lic;$('sLow').value=s.low;$('sUpi').value=s.upi||'';$('sQuote').value=s.quote||'';$('sSurge').checked=!!s.surge;$('sSpct').value=s.spct||15;$('sPin').value=myPin();$('sPinLbl').textContent='PIN for '+(SYNC.who||'this phone')}
+['sName','sPhone','sLic','sLow','sUpi','sQuote'].forEach(id=>$(id).onchange=()=>{
+ S.set=Object.assign({},S.set,{name:$('sName').value.trim()||'MY SHOP',lic:$('sLic').value.trim(),low:parseInt($('sLow').value)||0,upi:$('sUpi').value.trim(),quote:$('sQuote').value.trim(),phone:$('sPhone').value.trim(),pin:S.set.pin||''});
  save();head();toast('Saved')});
 $('pinSave').onclick=async()=>{if(!SYNC.who){toast('Tap the name at the top and choose who you are first');return}const v=$('sPin').value.trim();toast('Saving PIN...');try{await savePin(SYNC.who,v)}catch(e){const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);toast('Could not save PIN: '+er);reportErr('PIN save failed: '+er);return}lockUi();toast(v?'PIN saved for '+SYNC.who:'PIN removed for '+SYNC.who);return;
  if(!SYNC.ready){toast('PIN saved on this phone only. Sync is off (grey dot at top).');return}
@@ -3317,7 +3314,7 @@ const RESETS=[
   count:()=>S.items.filter(i=>i.s>0).length+' items with stock',run:()=>{S.items.forEach(i=>{i.s=0})}},
  {id:'items',name:'Item list',short:'Deletes all items with their prices and stock, and the stock-in history. Past bills are not affected.',
   count:()=>S.items.length+' items',run:()=>{S.items=[];S.buys=[]}},
- {id:'set',name:'Shop details and settings',short:'Sets shop name, licence, GST, UPI ID, low-stock level and price surge back to default. Users, PINs, admin privileges and notes stay.',
+ {id:'set',name:'Shop details and settings',short:'Sets shop name, licence, UPI ID, low-stock level and price surge back to default. Users, PINs, admin privileges and notes stay.',
   count:()=>S.set.name+(S.set.upi?', UPI '+S.set.upi:''),
   run:()=>{const keep={};['pin','priv','pins','notes','notesAt','lockGen'].forEach(k=>{if(S.set[k]!==undefined)keep[k]=S.set[k]});S.set=Object.assign(JSON.parse(JSON.stringify(DEF.set)),keep)}},
  {id:'all',name:'Everything',short:'Deletes all items, bills, customers, expenses and settings, and starts again.',
@@ -3391,7 +3388,7 @@ $('reset').onclick=openResetMenu;
  const mkSale=(b,seen)=>{const r=b.row||[],no=+r[0];if(!no||seen.has(no))return null;
   const ls=(b.lines||[]).map(l=>{const it=S.items.find(i=>i.n===l[2]);return{c:it?it.c:String(l[2]),n:String(l[2]),q:+l[3]||0,p:+l[4]||0,k:it?it.k:0}}).filter(l=>l.q>0);
   if(!ls.length)return null;
-  const s={no,t:pd(r[1],r[2]),by:r[3]||'',cust:r[4]||'',phone:String(r[5]||''),pay:PAYP(r[6]).pay,...PAYP(r[6]).sp,lines:ls,sub:+r[9]||0,d:+r[10]||0,gst:+r[11]||0,round:+r[12]||0,adj:0,total:+r[13]||0,mode:S.set.mode,rate:S.set.rate};
+  const s={no,t:pd(r[1],r[2]),by:r[3]||'',cust:r[4]||'',phone:String(r[5]||''),pay:PAYP(r[6]).pay,...PAYP(r[6]).sp,lines:ls,sub:+r[9]||0,d:+r[10]||0,gst:+r[11]||0,round:+r[12]||0,adj:0,total:+r[13]||0,mode:'none',rate:0};
   if(r[14]==='Cancelled')s.void=true;if(r[15])s.ec=1;return s};
  async function retrieveSheet(){
   if(rbusy)return;
@@ -3754,43 +3751,82 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
 </script>
 
 <script>
-/* ===== auto-update check ===== */
+/* ===== in-app update (check, show what's new, install) ===== */
 (function(){
- const APP_VERSION='1.1.0';                                   /* change this on every release */
- const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json'; /* developer: put your version.json link here */
- const EVERY=30*60*1000;                                       /* re-check every 30 minutes */
+ const APP_VERSION='1.1.1';                                   /* change this on every release */
+ const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
+ const EVERY=30*60*1000;
+ const HTTP=/^https?:$/.test(location.protocol);
+ const LAUNCH=location.protocol==='file:'&&location.search.indexOf('launcher=1')>-1;
  const cmp=(a,b)=>{a=String(a).split('.').map(Number);b=String(b).split('.').map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){const x=a[i]||0,y=b[i]||0;if(x!==y)return x>y?1:-1}return 0};
  const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
+ const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  const css=document.createElement('style');
- css.textContent='#updBar{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:var(--ink,#1f2a44);color:#fff;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:15px}#updBar button{border:0;border-radius:8px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}#updGo{background:var(--gold,#ffc233);color:#1f2a44}#updLater{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5)!important}';
+ css.textContent='#updBar{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:var(--ink,#1f2a44);color:#fff;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:15px}#updBar button{border:0;border-radius:8px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}#updGo{background:var(--gold,#ffc233);color:#1f2a44}#updLater{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5)!important}'
+ +'#updOv{position:fixed;inset:0;z-index:10000;background:rgba(15,20,40,.55);display:flex;align-items:center;justify-content:center;padding:16px}#updOv .uc{background:var(--card,#fff);color:var(--ink,#1f2a44);border-radius:16px;max-width:420px;width:100%;padding:22px 20px;box-shadow:0 12px 40px rgba(0,0,0,.35);text-align:center}#updOv .ui{font-size:42px;line-height:1}#updOv h3{margin:8px 0 4px;font-size:20px}#updOv .ub{font-size:15px;margin:6px 0 12px;color:var(--mute,#6b7690)}#updOv .un{background:var(--bg,#f4f8fc);border:1px solid var(--line,#e1e8f2);border-radius:10px;padding:10px 12px;margin:10px 0;text-align:left;font-size:15px;color:var(--ink,#1f2a44)}#updOv .ur{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}#updOv button{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer;background:var(--line,#e1e8f2);color:var(--ink,#1f2a44)}#updOv button.p{background:var(--acc,#e0344b);color:#fff}'
+ +'#updOv .sp{width:34px;height:34px;border:4px solid var(--line,#e1e8f2);border-top-color:var(--acc,#e0344b);border-radius:50%;margin:6px auto;animation:updsp 1s linear infinite}@keyframes updsp{to{transform:rotate(360deg)}}';
  document.head.appendChild(css);
- const say=m=>{if(typeof toast==='function')toast(m)};
+
+ function modal(o){
+  const old=document.getElementById('updOv');if(old)old.remove();
+  const el=document.createElement('div');el.id='updOv';
+  el.innerHTML='<div class="uc">'+(o.spin?'<div class="sp"></div>':'<div class="ui">'+(o.icon||'')+'</div>')+'<h3>'+esc(o.title)+'</h3>'+(o.body?'<div class="ub">'+esc(o.body)+'</div>':'')+(o.notes?'<div class="un"><b>What’s new</b><br>'+esc(o.notes)+'</div>':'')+'<div class="ur"></div></div>';
+  const row=el.querySelector('.ur');
+  (o.buttons||[]).forEach(b=>{const x=document.createElement('button');x.textContent=b.t;if(b.p)x.className='p';x.onclick=()=>{el.remove();if(b.fn)b.fn()};row.appendChild(x)});
+  document.body.appendChild(el);
+ }
+ const fail=msg=>modal({icon:'⚠️',title:'Update not installed',body:msg,buttons:[{t:'Close'},{t:'Try again',p:1,fn:()=>check(true)}]});
+
  function bar(info){
   if(document.getElementById('updBar'))return;
   const b=document.createElement('div');b.id='updBar';
-  b.innerHTML='<span>🔔 New version <b></b> is ready.<span id="updNote"></span></span><button id="updGo">Update now</button><button id="updLater">Later</button>';
+  b.innerHTML='<span>🔔 New version <b></b> is ready.</span><button id="updGo">Update now</button><button id="updLater">Later</button>';
   b.querySelector('b').textContent=info.version;
-  if(info.notes)b.querySelector('#updNote').textContent=' '+info.notes;
   document.body.appendChild(b);
-  b.querySelector('#updLater').onclick=()=>{if(!info.force){LS('sb-upd-skip',info.version);b.remove()}};
+  b.querySelector('#updGo').onclick=()=>{b.remove();offer(info)};
   if(info.force)b.querySelector('#updLater').remove();
-  b.querySelector('#updGo').onclick=()=>apply(info);
+  else b.querySelector('#updLater').onclick=()=>{LS('sb-upd-skip',info.version);b.remove()};
+ }
+ function offer(info){
+  modal({icon:'🆕',title:'Update available: version '+info.version,body:'You are using version '+APP_VERSION+'. A new patch from your software provider is ready to install. Your bills and data stay safe.',notes:info.notes,
+   buttons:(info.force?[]:[{t:'Later'}]).concat([{t:'Update now',p:1,fn:()=>apply(info)}])});
+ }
+
+ function status(tok){
+  let n=0;
+  const iv=setInterval(()=>{
+   n++;
+   if(n>75){clearInterval(iv);LS('sb-upd-pending','');fail('The update did not start. Press Update again and choose “Open” when Windows or the browser asks. Tick “Always allow” so it does not ask again.');return}
+   window.__upd=null;
+   const s=document.createElement('script');s.src='update_status.js?t='+Date.now();
+   s.onload=()=>{const u=window.__upd;s.remove();
+    if(u&&u.t===tok){clearInterval(iv);
+     if(u.ok){modal({spin:1,title:'Update installed',body:'Restarting the app…'});setTimeout(()=>location.reload(),900)}
+     else{LS('sb-upd-pending','');fail(u.msg||'Please check the internet and try again.')}}};
+   s.onerror=()=>s.remove();
+   document.head.appendChild(s);
+  },1000);
  }
  async function apply(info){
   try{if(typeof saveDraft==='function')saveDraft();if(typeof save==='function')save()}catch(e){}
-  if(/^https?:$/.test(location.protocol)){
-   /* hosted page: pull the fresh copy past the browser cache, then reload. Data stays in the browser. */
-   try{await fetch(location.href,{cache:'reload'})}catch(e){}
-   location.reload();
-  }else if(location.search.indexOf('launcher=1')>-1){
-   say('Close Shop Billing and open it again from the Desktop icon. The update installs by itself.');
-  }else if(info.url){
-   /* opened as a file on the PC: send them to the download */
-   window.open(info.url,'_blank');say('Download the new file and open it in place of the old one.');
-  }else say('Please ask your software provider for the new file.');
+  LS('sb-upd-pending',JSON.stringify({v:info.version,notes:info.notes||''}));
+  if(HTTP){
+   modal({spin:1,title:'Installing update…',body:'Please wait, do not close the app.'});
+   try{await fetch(location.href.split('#')[0],{cache:'reload'})}catch(e){}
+   setTimeout(()=>location.reload(),900);
+  }else if(LAUNCH){
+   modal({spin:1,title:'Installing update…',body:'Please wait, do not close the app. If asked, choose “Open”.'});
+   const tok=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+   const a=document.createElement('a');a.href='shopbillingupdate:'+tok;document.body.appendChild(a);a.click();a.remove();
+   status(tok);
+  }else{
+   LS('sb-upd-pending','');
+   if(info.url)window.open(info.url,'_blank');
+   modal({icon:'ℹ️',title:'Install from the Desktop app',body:'This copy cannot update itself. Please install Shop Billing with the installer from your software provider.',buttons:[{t:'OK'}]});
+  }
  }
  async function check(manual){
-  if(!UPDATE_URL||UPDATE_URL.indexOf('YOUR-SITE')>-1){if(manual)say('Update link is not set yet.');return}
+  if(!UPDATE_URL)return;
   try{
    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
    const r=await fetch(UPDATE_URL+(UPDATE_URL.indexOf('?')>-1?'&':'?')+'t='+Date.now(),{cache:'no-store',signal:ctl.signal});
@@ -3798,11 +3834,23 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
    if(!r.ok)throw 0;
    const info=await r.json();
    if(info&&info.version&&cmp(info.version,APP_VERSION)>0){
-    if(!manual&&!info.force&&LS('sb-upd-skip')===info.version)return;
-    bar(info);
-   }else if(manual)say('You have the latest version ('+APP_VERSION+').');
-  }catch(e){if(manual)say('Could not check for updates. Check the internet.')}
+    if(manual)offer(info);
+    else if(info.force||LS('sb-upd-skip')!==info.version)bar(info);
+   }else if(manual)modal({icon:'✅',title:'You are up to date',body:'Version '+APP_VERSION+' is the latest.',buttons:[{t:'OK',p:1}]});
+  }catch(e){if(manual)modal({icon:'📡',title:'Could not check',body:'Please check your internet and try again.',buttons:[{t:'OK',p:1}]})}
  }
+
+ /* after an update: show the result */
+ try{
+  const raw=LS('sb-upd-pending');
+  if(raw){LS('sb-upd-pending','');const p=JSON.parse(raw);
+   setTimeout(()=>{
+    if(cmp(APP_VERSION,p.v)>=0)modal({icon:'🎉',title:'Updated to version '+APP_VERSION,body:'Your software provider has installed a new patch. Thank you for using Shop Billing.',notes:p.notes,buttons:[{t:'Continue',p:1}]});
+    else fail('The app is still on version '+APP_VERSION+'. Please try again.');
+   },900);
+  }
+ }catch(e){}
+
  const ts=document.getElementById('t-setup');
  if(ts){
   ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>App update</b><p class="muted" style="margin:4px 0 8px">Installed version: <b>'+APP_VERSION+'</b></p><button class="btn" id="updCheck">Check for update</button></div>');
