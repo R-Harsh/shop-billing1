@@ -205,7 +205,7 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
 #itemTable input[readonly]{background:transparent;border-color:transparent;cursor:default;font-weight:600;pointer-events:none}
 #itemTable .btn{white-space:normal;padding:5px 6px;font-size:13px}
 #itemTable .ibtn .btn{width:100%}
-@media(max-width:700px){#t-items .scroll{overflow-x:auto}#itemTable{min-width:760px}}
+@media(max-width:700px){#t-items .scroll{overflow-x:auto}#itemTable{min-width:830px}}
 
 /* ===== idle signboard + milestone celebration ===== */
 .fwo{position:fixed;inset:0;z-index:2147483000;background:radial-gradient(ellipse at 50% 120%,#1b1440,#060918 70%);color:#fff;text-align:center;cursor:pointer;animation:fade .6s ease both;-webkit-tap-highlight-color:transparent;overflow:hidden}
@@ -305,7 +305,7 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
   <input id="iSearch" placeholder="Search by item name or price (example: soap or 150)" autocomplete="off" style="margin-bottom:8px">
   <div class="row sortBar" style="margin:6px 0"><span class="muted">Order:</span><button class="btn alt sm" type="button" data-sort="asc">A → Z</button><button class="btn alt sm" type="button" data-sort="desc">Z → A</button></div>
   <div class="scroll"><table class="table" id="itemTable"></table></div>
-  <p class="muted" style="margin-bottom:0">Edit any cell and it saves automatically. Profit per item is customer price minus base cost. Stock turns amber when it falls to the low-stock level.</p>
+  <p class="muted" style="margin-bottom:0">Edit any cell and it saves automatically. Profit per item is customer price minus base cost. Stock turns amber when it falls to the low-stock level. Total sold is the number of pieces sold in all saved bills, cancelled bills not counted.</p>
  </div>
  <div class="card" style="margin-top:12px"><b>Stock-in from supplier</b>
   <div class="row" style="margin:8px 0;flex-wrap:wrap"><input id="bItem" list="bItemL" autocomplete="off" placeholder="Item name (type a new name to add it to the list)" style="flex:2;min-width:180px"><datalist id="bItemL"></datalist><input id="bQty" type="number" min="1" placeholder="Qty" style="flex:1;min-width:70px"><input id="bCost" type="number" min="0" placeholder="New base cost ₹ (optional)" style="flex:1;min-width:120px"><input id="bPrice" type="number" min="0" placeholder="Selling price ₹ (new item only)" style="flex:1;min-width:120px"><button class="btn" id="bAdd">Add stock</button><button class="btn alt" id="bNew">+ New item</button></div>
@@ -2185,15 +2185,17 @@ function itemView(){
  if(SORT)R.sort((a,b)=>SORT*a[0].n.localeCompare(b[0].n,undefined,{sensitivity:'base'}));
  return R}
 function renderItems(){
- const cg='<colgroup><col style="width:4%"><col style="width:13%"><col style="width:24%"><col style="width:12%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:7%"><col style="width:12%"></colgroup>';
- $('itemTable').innerHTML=cg+'<tr><th>Sr no.</th><th>Photo</th><th>Name</th><th>Barcode</th><th>Base cost ₹</th><th>Customer price ₹</th><th>Profit per item</th><th>Stock</th><th></th></tr>'+
+ const SOLD={};S.sales.forEach(s=>{if(s.void)return;s.lines.forEach(l=>{SOLD[l.c]=(SOLD[l.c]||0)+(+l.q||0)})});
+ const cg='<colgroup><col style="width:4%"><col style="width:12%"><col style="width:20%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:7%"><col style="width:7%"><col style="width:11%"></colgroup>';
+ $('itemTable').innerHTML=cg+'<tr><th>Sr no.</th><th>Photo</th><th>Name</th><th>Barcode</th><th>Base cost ₹</th><th>Customer price ₹</th><th>Profit per item</th><th>Stock</th><th title="All saved bills. Cancelled bills are not counted">Total sold</th><th></th></tr>'+
  itemView().map(([i,x],n)=>{const ed=IEDIT.has(i.c),lk=ed?'':' readonly tabindex="-1"';return `<tr><td style="font-weight:700">${n+1}</td><td><div class="row" style="flex-wrap:wrap;gap:4px">${i.img?'<img class="thm" alt="" src="'+i.img+'">':'<span class="thm none">📷</span>'}<span><button class="btn alt sm" data-ph="${x}">${i.img?'Change':'Add photo'}</button>${i.img?'<br><button class="rm" data-phx="'+x+'" style="font-size:13px">Remove</button>':''}</span></div></td><td><input value="${esc(i.n)}" data-x="${x}" data-f="n"${lk}></td>
  <td><input value="${esc(i.bc||'')}" data-x="${x}" data-f="bc" placeholder="${ed?'Scan or type':''}" inputmode="numeric"${lk}></td>
  <td><input type="number" value="${i.k}" data-x="${x}" data-f="k"${lk}></td>
  <td><input type="number" value="${i.p}" data-x="${x}" data-f="p"${lk}></td>
  <td style="font-weight:600;color:${i.p-i.k<0?'var(--acc)':'var(--ok)'}">${money(i.p-i.k)}${i.p>0?' ('+Math.round((i.p-i.k)/i.p*100)+'%)':''}${i.p>0&&i.p<i.k?'<br><span style="color:var(--acc);font-size:12px">⚠ Priced below cost</span>':''}</td>
  <td><input type="number" value="${i.s}" data-x="${x}" data-f="s"${lk} style="${i.s<=S.set.low?'color:var(--warn);'+(ed?'border-color:var(--warn)':''):''}"></td>
- <td class="ibtn">${ed?'<button class="btn sm" data-ed="'+esc(i.c)+'">Done</button>':'<button class="btn alt sm" data-opt="'+esc(i.c)+'">Actions ▾</button>'}</td></tr>`}).join('')||'<tr><td colspan="9" class="muted">No item found</td></tr>';
+ <td style="font-weight:700">${SOLD[i.c]||0}</td>
+ <td class="ibtn">${ed?'<button class="btn sm" data-ed="'+esc(i.c)+'">Done</button>':'<button class="btn alt sm" data-opt="'+esc(i.c)+'">Actions ▾</button>'}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">No item found</td></tr>';
 }
 $('itemTable').onmousedown=e=>{if(e.target.closest('[data-ed]'))e.preventDefault()};
 $('itemTable').onchange=e=>{const t=e.target;if(t.dataset.x===undefined)return;const it=S.items[t.dataset.x],f=t.dataset.f;let warn='';
@@ -3753,7 +3755,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
 <script>
 /* ===== in-app update (check, show what's new, install) ===== */
 (function(){
- const APP_VERSION='1.1.1';                                   /* change this on every release */
+ const APP_VERSION='1.1.2';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
