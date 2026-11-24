@@ -329,6 +329,21 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
   </div>
  </div>
  <div id="repBody"></div>
+ <div class="card" id="staffCard" style="margin-top:12px">
+  <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px">
+   <b style="flex:1;min-width:150px">Staff sales report</b>
+   <button class="btn alt sm" type="button" data-sr="today">Today</button>
+   <button class="btn alt sm" type="button" data-sr="week">This week</button>
+   <button class="btn alt sm" type="button" data-sr="month">This month</button>
+   <button class="btn sm" type="button" id="srPdf">Save as PDF</button>
+  </div>
+  <div class="row" style="flex-wrap:wrap;margin-bottom:8px">
+   <label style="flex:1;min-width:130px">From<input type="date" id="srFrom"></label>
+   <label style="flex:1;min-width:130px">To<input type="date" id="srTo"></label>
+  </div>
+  <div class="scroll" id="srBody"></div>
+  <p class="muted" id="srNote" style="margin-bottom:0"></p>
+ </div>
 </section>
 
 <section class="tab" id="t-cust">
@@ -2521,6 +2536,7 @@ function renderReport(){
  if(!$('rDate').value)$('rDate').value=dk(new Date());
  const key=$('rDate').value;
  $('repBody').innerHTML='<div class="card">'+repHtml(key)+'</div>';
+ renderStaff();
 }
 function renderExp(){
  const el=$('eList');if(!el)return;
@@ -2528,6 +2544,36 @@ function renderExp(){
  $('eDayTxt').textContent='for '+new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' (change the date at the top of this page)';
  el.innerHTML=ex.length?ex.map(e=>`<div class="row" style="padding:4px 0"><span style="flex:1">${esc(e.n)}</span><b>${money(e.a)}</b><button class="btn alt sm" data-e="${e.id}">Remove</button></div>`).join('')+'<div class="row" style="justify-content:space-between;padding:6px 0 0;border-top:1px dashed var(--line)"><b>Total</b><b>'+money(ex.reduce((a,x)=>a+(+x.a||0),0))+'</b></div>':'<p class="muted">No expenses for this day. Add rent, labour, transport or electricity to see your true net profit.</p>'}
 $('rDate').onchange=renderReport;
+
+/* ===== staff sales report ===== */
+function staffRows(f,t){
+ const m={},g=n=>{n=String(n||'').trim()||'(Name not saved)';return m[n]=m[n]||{n,bills:0,items:0,sales:0,cash:0,upi:0,later:0,cn:0,ca:0,cby:0,ed:0}};
+ S.sales.forEach(x=>{if(x.t<f||x.t>t)return;const r=g(x.by);
+  if(x.void){r.cn++;r.ca+=x.total;if(x.vby&&x.vby!=='?')g(x.vby).cby++}
+  else{r.bills++;r.items+=x.lines.reduce((a,l)=>a+(+l.q||0),0);r.sales+=x.total;r.cash+=payAmt(x,'Cash');r.upi+=payAmt(x,'UPI');r.later+=payAmt(x,'Pay later');if(x.ec)r.ed++}});
+ return Object.values(m).sort((a,b)=>b.sales-a.sales||b.cn-a.cn)}
+function srRange(){const a=$('srFrom').value||dk(new Date()),b=$('srTo').value||a;return[new Date(a+'T00:00:00').getTime(),new Date(b+'T23:59:59.999').getTime(),a,b]}
+function staffHtml(){
+ const[f,t]=srRange(),R=staffRows(f,t),M=money;
+ if(!R.length)return'<p class="muted">No bills in these dates.</p>';
+ const T=R.reduce((a,r)=>{Object.keys(r).forEach(k=>{if(k!=='n')a[k]=(a[k]||0)+r[k]});return a},{});
+ const red=(v,txt)=>v>0?'<span style="color:var(--acc);font-weight:700">'+txt+'</span>':txt;
+ const row=(r,b)=>{const w=b?'<b>':'',e=b?'</b>':'';return`<tr><td>${w}${esc(r.n)}${e}</td><td class="r">${w}${r.bills}${e}</td><td class="r">${w}${r.items}${e}</td><td class="r">${w}${M(r.sales)}${e}</td><td class="r">${M(r.cash)}</td><td class="r">${M(r.upi)}</td><td class="r">${M(r.later)}</td><td class="r">${red(r.cn,r.cn+(r.cn?' ('+M(r.ca)+')':''))}</td><td class="r">${red(r.cby,r.cby)}</td><td class="r">${r.ed}</td></tr>`};
+ return'<table class="table" style="min-width:760px"><tr><th>Staff</th><th class="r">Bills</th><th class="r">Items sold</th><th class="r">Sales</th><th class="r">Cash</th><th class="r">UPI</th><th class="r">Pay later</th><th class="r" title="Bills made by this person and later cancelled">Cancelled bills</th><th class="r" title="Bills this person cancelled">Cancelled by them</th><th class="r" title="Bills changed after saving">Edited</th></tr>'+R.map(r=>row(r)).join('')+(R.length>1?row(Object.assign({n:'Total'},T),1):'')+'</table>'}
+function renderStaff(){
+ if(!$('srFrom'))return;
+ if(!$('srFrom').value)$('srFrom').value=dk(new Date());
+ if(!$('srTo').value)$('srTo').value=$('srFrom').value;
+ $('srBody').innerHTML=staffHtml();
+ const named=S.sales.some(x=>x.by&&String(x.by).trim());
+ $('srNote').textContent=(named?'':'Staff names are saved with each bill when Live Sync users are set up. Older bills show as "Name not saved". ')+'Sales do not include cancelled bills. Cancelled bills are counted under the person who made the bill.'}
+$('srFrom').onchange=$('srTo').onchange=renderStaff;
+$('staffCard').onclick=e=>{const k=e.target.dataset.sr;if(!k)return;const n=new Date();let a=new Date(n);
+ if(k==='week'){const d=(n.getDay()+6)%7;a.setDate(n.getDate()-d)}else if(k==='month')a=new Date(n.getFullYear(),n.getMonth(),1);
+ $('srFrom').value=dk(a);$('srTo').value=dk(n);renderStaff()};
+$('srPdf').onclick=()=>{const[,,a,b]=srRange(),st=S.set,fm=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ $('repPrint').innerHTML=`<h2 style="margin:0">${esc(st.name)}</h2><div>Staff sales report: ${fm(a)}${a===b?'':' to '+fm(b)}</div>`+staffHtml();
+ document.body.className='pr-rep';doPrint('staff-report-'+a+(a===b?'':'-to-'+b))};
 $('eAdd').onclick=()=>{const n=$('eName').value.trim(),a=parseFloat($('eAmt').value);if(!n||!(a>0)){toast('Enter a name and an amount');return}
  S.exp.push({id:Date.now(),d:CB.day||dk(new Date()),n,a});save();$('eName').value='';$('eAmt').value='';renderCash();toast('Expense added: '+money(a))};
 $('eList').onclick=e=>{const i=e.target.dataset.e;if(!i)return;S.exp=S.exp.filter(x=>String(x.id)!==i);save();renderCash()};
@@ -3755,7 +3801,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
 <script>
 /* ===== in-app update (check, show what's new, install) ===== */
 (function(){
- const APP_VERSION='1.1.2';                                   /* change this on every release */
+ const APP_VERSION='1.1.3';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
