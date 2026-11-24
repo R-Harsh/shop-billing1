@@ -1,6 +1,6 @@
 {
-  "version": "1.2.3",
-  "notes": "Fixed: the Total and Complete bill button no longer slide far down the Bill screen.\nComplete bill button text is fully visible again.",
+  "version": "1.2.7",
+  "notes": "Updates now happen only when you ask: Setup > Check for update, then Download & install.\nThe app no longer checks or shows update banners by itself.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
