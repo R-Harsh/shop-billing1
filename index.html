@@ -30,6 +30,7 @@ input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid 
 .btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .btn.sm{padding:5px 9px;font-size:14px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.isOn:disabled,.btn.isOn:disabled:hover{opacity:1!important;cursor:default;background:#16a34a!important;color:#fff!important;box-shadow:none!important;filter:none!important}
 .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px;max-height:calc(100vh - 190px);overflow:auto}
 @media(max-width:820px){.picks{max-height:62vh}}
 .pick{text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer}
@@ -3217,17 +3218,25 @@ setInterval(()=>{try{const c=document.querySelector('input[name=pay]:checked'),n
  window.sheetMarkSent=s=>{const sn=sent();sn[s.no]=sig(s);SS('sb-sheet-sent',JSON.stringify(sn))};
  window.addEventListener('online',kick);
  function card(){const ts=document.getElementById('t-setup');if(!ts)return;
-  ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>Google Sheet (live bill list)</b><p class="muted" id="sheetMsg" style="margin:4px 0 8px"></p><input id="sheetUrl" placeholder="Web app link from Google (starts with https://script.google.com)" autocomplete="off" autocapitalize="off"><input id="sheetSec" placeholder="Secret word (same as in the Google script)" autocomplete="off" autocapitalize="off" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" id="sheetSave">Save and send</button><button class="btn alt" id="sheetTest">Test</button><button class="btn alt" id="sheetOff">Disconnect</button></div></div>');
+  ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>Google Sheet (live bill list)</b><p class="muted" id="sheetMsg" style="margin:4px 0 8px"></p><input id="sheetUrl" placeholder="Web app link from Google (starts with https://script.google.com)" autocomplete="off" autocapitalize="off"><input id="sheetSec" placeholder="Secret word (same as in the Google script)" autocomplete="off" autocapitalize="off" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" id="sheetSave">Connect</button><button class="btn alt" id="sheetTest">Test</button><button class="btn alt" id="sheetOff">Disconnect</button></div></div>');
   const u=document.getElementById('sheetUrl'),sc=document.getElementById('sheetSec');u.value=url();sc.value=sec();
   msg(url()?'Connected. Every new, edited or cancelled bill is sent to your sheet.':'Not connected. Bills stay only in this app.');
   if(window.claude){msg('Google Sheet works only in the installed Windows app, not on the Claude web page.');['sheetSave','sheetTest','sheetOff'].forEach(i=>{document.getElementById(i).disabled=true})}
-  document.getElementById('sheetSave').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\//.test(v)){toast('Paste the Web app link that starts with https://script.google.com');return}
-   SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());SS('sb-sheet-sent','{}');msg('Sending all bills to the sheet...');kick()};
-  document.getElementById('sheetTest').onclick=async()=>{const v=u.value.trim();if(!v){toast('Paste the link first');return}
-   SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());msg('Testing...');
-   try{const j=await post({ping:true});msg(j&&j.ok?'Test passed. Your Google Sheet answered. Now press Save and send.':'The sheet answered but refused: '+((j&&j.error)||'unknown'))}
-   catch(e){msg('Could not reach the sheet. Check the link, that access is set to Anyone, and the internet.')}};
-  document.getElementById('sheetOff').onclick=()=>{SS('sb-sheet-url','');SS('sb-sheet-sec','');SS('sb-sheet-sent','{}');u.value='';sc.value='';msg('Not connected. Bills stay only in this app.')}}
+  let linked=!!url();
+  const bSave=document.getElementById('sheetSave'),bOff=document.getElementById('sheetOff'),bTest=document.getElementById('sheetTest');
+  function sheetUi(){if(window.claude)return;
+   bSave.textContent=linked?'\u2713 Connected':'Connect';bSave.disabled=linked;bSave.classList.toggle('isOn',linked);
+   u.readOnly=linked;sc.readOnly=linked;u.style.opacity=sc.style.opacity=linked?.6:'';
+   bOff.disabled=!linked}
+  bSave.onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\//.test(v)){toast('Paste the Web app link that starts with https://script.google.com');return}
+   SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());SS('sb-sheet-sent','{}');linked=true;sheetUi();msg('Connected. Sending all bills to the sheet...');kick()};
+  bTest.onclick=async()=>{const v=u.value.trim();if(!v){toast('Paste the link first');return}
+   const pu=url(),ps=sec();SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());msg('Testing...');
+   try{const j=await post({ping:true});msg(j&&j.ok?'Test passed. Your Google Sheet answered. Now press Connect.':'The sheet answered but refused: '+((j&&j.error)||'unknown'))}
+   catch(e){msg('Could not reach the sheet. Check the link, that access is set to Anyone, and the internet.')}
+   if(!linked){SS('sb-sheet-url',pu);SS('sb-sheet-sec',ps)}};
+  bOff.onclick=()=>{SS('sb-sheet-url','');SS('sb-sheet-sec','');SS('sb-sheet-sent','{}');u.value='';sc.value='';linked=false;sheetUi();msg('Not connected. Bills stay only in this app.')};
+  sheetUi()}
  card();kick();
 })();
 const SB_URL='https://zjcyhodgryryusgxzral.supabase.co/rest/v1',SB_KEY='sb_publishable_cuDCkVgzwNO0vXgv5LhUrw_fAu6SHM7';
@@ -3284,13 +3293,22 @@ async function getDb(){let c='';try{c=localStorage.getItem('sb-shop')||''}catch(
  $('syncMsg').textContent=c?'A shop code is saved. Green dot at the top means this device is connected.':'Not connected. This PC keeps its own bills only.';
  if(window.claude){$('syncMsg').textContent='On the Claude web page the data is already shared through Claude. Shop codes work only in the installed Windows app.';$('syncOn').disabled=true;$('syncOff').disabled=true}
  $('syncOn').onclick=()=>{const v=$('syncCode').value.trim();if(!v){toast('Enter your shop code');return}try{localStorage.setItem('sb-shop',v)}catch(e){}location.reload()};
- $('syncOff').onclick=()=>{try{localStorage.removeItem('sb-shop')}catch(e){}location.reload()}})();
+ $('syncOff').onclick=()=>{try{localStorage.removeItem('sb-shop')}catch(e){}location.reload()};
+ window.syncUi=function(){if(window.claude)return;const on=$('syncOn'),off=$('syncOff'),inp=$('syncCode');if(!on)return;
+  let sv='';try{sv=localStorage.getItem('sb-shop')||''}catch(e){}
+  const m=SYNC.mode,ok=!!sv&&m==='cloud',wait=!!sv&&!m;
+  on.classList.toggle('isOn',ok);on.disabled=ok||wait;
+  on.textContent=ok?'\u2713 Connected':wait?'Connecting\u2026':(sv?'Retry connect':'Connect');
+  inp.readOnly=ok||wait;inp.style.opacity=(ok||wait)?.6:'';off.disabled=!sv;
+  if(ok)$('syncMsg').textContent='Connected to Supabase. This device is syncing with your shop code.';
+  else if(sv&&m==='local')$('syncMsg').textContent='A shop code is saved but the database could not be reached. Press Retry connect.'};
+ syncUi()})();
 
 /* ===== connection status and connectivity check ===== */
 const MODE_NAME={cloud:'Supabase (shop code)',web:'Claude database',local:'This device only'};
 function connUi(){const b=$('connBtn');if(!b)return;const m=SYNC.mode;
  b.textContent=m==='cloud'?'☁ Supabase':m==='web'?'☁ Claude database':m==='local'?'💾 This device only':'… Connecting';
- b.style.borderColor=m==='local'?'var(--warn)':'';b.title='Tap to check the connection to data storage'}
+ b.style.borderColor=m==='local'?'var(--warn)':'';b.title='Tap to check the connection to data storage';if(window.syncUi)syncUi()}
 const fmtB=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(2)+' MB';
 function sheetSent(){let sn={};try{sn=JSON.parse(localStorage.getItem('sb-sheet-sent')||'{}')}catch(e){}
  const n=S.sales.filter(s=>sn[s.no]!==undefined).length,t=S.sales.length;
