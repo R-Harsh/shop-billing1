@@ -1,4 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* setup page: use the full width, cards side by side */
+#t-setup>.setupGrid{max-width:none;columns:340px 3;column-gap:12px}
+#t-setup>.setupGrid>*{break-inside:avoid;margin:0 0 12px!important;display:block}
+#t-setup .sgrp{border:1px solid var(--line);border-radius:10px;padding:10px}
+#t-setup .sgrp>p:first-of-type{margin-top:6px}
+@media(max-width:700px){#t-setup>.setupGrid{columns:1}}
+</style></head><body>
 <title>Shop Billing</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;800&display=swap">
 <style>
@@ -374,8 +381,8 @@ nav button *{pointer-events:none}
 <section class="tab" id="t-log"><div class="card" id="logBody"></div></section>
 <section class="tab" id="t-sync"><div id="syncBody"></div></section>
 <section class="tab" id="t-setup">
- <div class="card" style="max-width:520px">
-  <b>Shop details (printed on bills)</b>
+ <div class="card setupGrid">
+  <div class="sgrp"><b>Shop details (printed on bills)</b>
   <p><label>Shop name<input id="sName" placeholder="Your shop name"></label></p>
   <p><label>Shop phone number (shown on the idle signboard)<input id="sPhone" type="tel" inputmode="tel" maxlength="40" placeholder="e.g. 98765 43210"></label></p>
   <p><label>Licence number (optional)<input id="sLic" placeholder="If your shop needs one"></label></p>
@@ -386,6 +393,7 @@ nav button *{pointer-events:none}
   <p class="muted">When an item's stock is at the low-stock level or less, new bills charge the higher price. The saved item price does not change.</p>
   <p><label><span id="sPinLbl">PIN</span> (leave empty for none)<input id="sPin" type="password" inputmode="numeric" maxlength="8"></label></p><p><button class="btn" id="pinSave">Save PIN</button></p>
   <p class="muted">This PIN is asked only when you open the app or switch user. Tab and action locks are set by the admin in the Admin tab.</p>
+  </div>
   <div id="goalCard" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px"><b>🎯 Team goals (amount + days)</b>
    <p class="muted" style="margin:4px 0 8px">Set a sales target and the number of days to reach it. The day you set is day 1. When the team reaches it, a celebration with your message appears on every screen, even on phones that were closed at that moment. Cancelled bills don't count.</p>
    <div id="goalList"></div>
@@ -410,17 +418,29 @@ nav button *{pointer-events:none}
    <div class="row" style="margin-bottom:6px"><input id="dpm2" type="number" min="0" inputmode="decimal" placeholder="Bill above ₹" aria-label="Discount 3: bill amount above" style="flex:1"><input id="dpv2" type="number" min="0" max="100" inputmode="decimal" placeholder="Discount %" aria-label="Discount 3: discount percent" style="flex:1"></div>
    <p class="muted" style="margin:6px 0 8px">Discounts are never applied automatically. Staff must type a discount or tap an “Apply” suggestion on the Bill screen.</p><input id="dpAuto" type="checkbox" hidden>
    <button class="btn sm" id="dpSave" type="button">Save discounts</button></div>
-  <p class="muted" id="bkInfo" style="margin-bottom:6px"></p><div class="row" style="flex-wrap:wrap;margin-bottom:12px"><button class="btn" id="bkSave">Save backup file</button><button class="btn alt" id="bkLoad">Restore from backup</button><input type="file" id="bkFile" accept=".json,application/json" style="display:none"></div>
+  <div id="cpCard" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px"><b>🎁 Complimentary products (based on bill amount)</b>
+   <p class="muted" style="margin:4px 0 8px">Set up to 3 free gifts. When the bill amount (before discount) goes above the amount you set, the free product you choose can be added to the bill. Example: Bill above 1000, Snake crackers, Qty 1. Type any product name (suggestions from your item list appear as you type). If the name matches an item in your list, its stock goes down; any other name is simply written on the bill as FREE. Leave the name empty to hide a row. If the bill reaches a bigger amount, only that bigger gift is offered. Free items are shown as FREE on the bill.</p>
+   <div class="row muted" style="font-size:12px;margin-bottom:2px"><span style="flex:1">Bill above ₹</span><span style="flex:2">Free product</span><span style="width:70px">Qty</span></div>
+   <div class="row" style="margin-bottom:6px;flex-wrap:wrap"><input id="cpm0" type="number" min="0" inputmode="decimal" placeholder="Bill above ₹" aria-label="Free gift 1: bill amount above" style="flex:1;min-width:110px"><input id="cpc0" list="cpL" maxlength="60" autocomplete="off" placeholder="Type free product name" aria-label="Free gift 1: product name" style="flex:2;min-width:150px"><input id="cpq0" type="number" min="1" inputmode="numeric" placeholder="Qty" value="1" aria-label="Free gift 1: quantity" style="width:70px"></div>
+   <div class="row" style="margin-bottom:6px;flex-wrap:wrap"><input id="cpm1" type="number" min="0" inputmode="decimal" placeholder="Bill above ₹" aria-label="Free gift 2: bill amount above" style="flex:1;min-width:110px"><input id="cpc1" list="cpL" maxlength="60" autocomplete="off" placeholder="Type free product name" aria-label="Free gift 2: product name" style="flex:2;min-width:150px"><input id="cpq1" type="number" min="1" inputmode="numeric" placeholder="Qty" value="1" aria-label="Free gift 2: quantity" style="width:70px"></div>
+   <div class="row" style="margin-bottom:6px;flex-wrap:wrap"><input id="cpm2" type="number" min="0" inputmode="decimal" placeholder="Bill above ₹" aria-label="Free gift 3: bill amount above" style="flex:1;min-width:110px"><input id="cpc2" list="cpL" maxlength="60" autocomplete="off" placeholder="Type free product name" aria-label="Free gift 3: product name" style="flex:2;min-width:150px"><input id="cpq2" type="number" min="1" inputmode="numeric" placeholder="Qty" value="1" aria-label="Free gift 3: quantity" style="width:70px"></div>
+   <p class="muted" style="margin:6px 0 8px">Free gifts are never added automatically. Staff taps “Give free” on the Bill screen.</p>
+   <datalist id="cpL"></datalist>
+   <button class="btn sm" id="cpSave" type="button">Save free products</button></div>
+  <div class="sgrp"><b>💾 Backup</b>
+  <p class="muted" id="bkInfo" style="margin-bottom:6px"></p><div class="row" style="flex-wrap:wrap;margin-bottom:12px"><button class="btn" id="bkSave">Save backup file</button><button class="btn alt" id="bkLoad">Restore from backup</button><input type="file" id="bkFile" accept=".json,application/json" style="display:none"></div></div>
   <div id="sumCard" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px"><b>📲 Daily summary to owner (WhatsApp)</b>
    <p class="muted" style="margin:4px 0 8px">At closing time the app shows the day's sales, cash and UPI ready to send. Press one button to send it on WhatsApp. It works while the app is open.</p>
    <label><input id="sumOn" type="checkbox"> Remind me at closing time</label>
    <div class="row" style="margin-top:6px"><input id="sumPh" type="tel" inputmode="numeric" maxlength="15" placeholder="Owner WhatsApp number"><input id="sumTm" type="time" style="width:130px"></div>
    <div class="row" style="margin-top:8px"><button class="btn sm" id="sumSave">Save</button><button class="btn alt sm" id="sumNow">Send today's summary now</button></div></div>
   <div id="abCard" style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px"></div>
+  <div class="sgrp">
   <p class="muted">The sample prices are typical retail rates for a stall. Replace them with your own price list in Items &amp; stock.</p>
   <div id="notesBox" style="margin:14px 0"><b>📝 Notes</b> <span class="muted" id="notesInfo" style="font-size:13px"></span>
    <textarea id="sNotes" rows="6" maxlength="20000" placeholder="Write your notes here (supplier numbers, reminders, anything). Saved automatically." style="width:100%;margin-top:6px;background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit"></textarea></div>
   <button class="btn alt" id="reset">Reset all data</button>
+  </div>
  </div>
 </section>
 </main>
@@ -525,6 +545,36 @@ function discUi(){
  if(sel==='n'&&cart.length&&!EDITNO)P.filter(p=>p.v>0&&sub>p.m).forEach(p=>{const b=document.createElement('button');b.type='button';b.className='btn alt sm';
   b.textContent='Apply '+(p.t==='a'?'\u20b9'+p.v:p.v+'%')+' discount';
   b.onclick=()=>{$('discType').value=p.t;$('disc').value=p.v;DCUS=false;DAUTO=false;DOFF=true;renderCart()};ch.appendChild(b)})}
+
+
+/* ===== complimentary (free) products by bill amount (set in Setup) ===== */
+let FREE=null;
+const cpMatch=n=>{n=String(n||'').trim().toLowerCase();return n?S.items.find(i=>i.n.trim().toLowerCase()===n):null};
+function cpr(){const d=(S.set&&S.set.cp)||[];return[0,1,2].map(i=>{const y=d[i]||{},n=String(y.n||(y.c&&find(y.c)?find(y.c).n:'')).trim(),it=cpMatch(n);return{m:Math.max(0,Number(y.m)||0),n,c:it?it.c:'',q:Math.max(1,parseInt(y.q)||1)}}).filter(p=>p.n&&p.m>0)}
+function cpOk(p){const it=p.c?find(p.c):null;if(!it)return true;const n=cart.reduce((a,l)=>l.c===p.c?a+l.q:a,0);return it.s-n>=p.q}
+function cpBest(sub){return cpr().filter(p=>sub>p.m&&cpOk(p)).sort((a,b)=>b.m-a.m)[0]}
+function freeLines(){if(!FREE)return[];const it=FREE.c?find(FREE.c):null;return[{c:it?it.c:'',n:it?it.n:FREE.n,q:FREE.q,k:it?it.k:0}]}
+const allLines=s=>s.lines.concat((s.free||[]).map(f=>({c:f.c,n:f.n+' (FREE gift)',q:f.q,p:0,fr:1})));
+const fcost=s=>(s.free||[]).reduce((a,f)=>a+(f.k||0)*f.q,0);
+function freeSync(){if(EDITNO){FREE=null;return}const b=cpBest(discSub());
+ if(FREE&&(!b||b.n!==FREE.n||b.m!==FREE.m||b.q!==FREE.q)){FREE=null;if(!b&&cart.length)toast('Free gift removed: bill is no longer above the amount')}}
+function freeUi(){let bx=$('freeBox');if(!bx){bx=document.createElement('div');bx.id='freeBox';bx.style.cssText='margin-top:8px';($('discChips')||$('discHint')).after(bx)}
+ bx.innerHTML='';if(EDITNO||!cart.length)return;
+ const sub=discSub(),nm=p=>esc(p.n)+' \u00d7 '+p.q;
+ if(FREE){bx.innerHTML='<div class="row" style="align-items:center;border:1px dashed var(--acc);border-radius:10px;padding:6px 10px"><span style="flex:1">\ud83c\udf81 Free gift: <b>'+nm(FREE)+'</b></span><button class="btn alt sm" id="freeOff" type="button">Remove</button></div>';
+  $('freeOff').onclick=()=>{FREE=null;renderCart()};return}
+ const b=cpBest(sub);
+ if(b){const x=document.createElement('button');x.type='button';x.className='btn alt sm';x.innerHTML='\ud83c\udf81 Give free: '+nm(b);x.onclick=()=>{FREE={c:b.c,n:b.n,q:b.q,m:b.m};renderCart()};bx.appendChild(x);return}
+ const nx=cpr().filter(p=>p.m>=sub).sort((a,b)=>a.m-b.m)[0];
+ if(nx)bx.innerHTML='<div class="muted" style="font-size:13px">\ud83c\udf81 Go above \u20b9'+nx.m+' to get free '+nm(nx)+'.</div>'}
+$('cpSave').onclick=()=>{const a=[];for(let i=0;i<3;i++){const m=Math.max(0,parseFloat($('cpm'+i).value)||0),n=$('cpc'+i).value.trim().replace(/\s+/g,' '),q=Math.max(1,parseInt($('cpq'+i).value)||1);
+  if(n&&!m){toast('Row '+(i+1)+': enter the bill amount');return}a.push({m,n,q})}
+ S.set.cp=a;save();cpLoad();renderCart();toast('Free products saved')};
+function cpLoad(){const d=(S.set&&S.set.cp)||[],dl=$('cpL');
+ if(dl)dl.innerHTML=S.items.slice().sort((a,b)=>a.n.localeCompare(b.n,undefined,{sensitivity:'base'})).map(it=>'<option value="'+esc(it.n)+'">').join('');
+ for(let i=0;i<3;i++){const nb=$('cpc'+i),m=$('cpm'+i),q=$('cpq'+i),y=d[i]||{};if(!nb)continue;
+  if(document.activeElement!==nb)nb.value=y.n||(y.c&&find(y.c)?find(y.c).n:'');
+  if(document.activeElement!==m)m.value=y.m||'';if(document.activeElement!==q)q.value=y.q||1}}
 
 function burst(){
  if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
@@ -1860,14 +1910,15 @@ function renderCart(){
  $('cart').innerHTML=cart.length?cart.map((l,i)=>{const it=gi(l);return `<div class="line"><div><b>${esc(it.n)}</b><br><small class="muted">${money(it.p)} each</small></div>
  <div class="q"><button data-i="${i}" data-d="-1" aria-label="Less">−</button><input type="number" min="1" value="${l.q}" data-i="${i}" aria-label="Quantity"><button data-i="${i}" data-d="1" aria-label="More">+</button></div>
  <b>${money(it.p*l.q)}</b><button class="rm" data-rm="${i}" aria-label="Remove item">✕</button></div>`}).join(''):'<p class="muted">Tap an item to start the bill.</p>';
- discAuto();const t=calc();
+ discAuto();freeSync();const t=calc();
  $('totals').innerHTML=`<div class="tot"><span>Subtotal</span><span>${money(t.sub)}</span></div>`+
   (t.d?`<div class="tot"><span>Discount (${fp(t.d,t.sub)}%)</span><span>−${money(t.d)}</span></div>`:'')+
+  (FREE&&freeLines()[0]?`<div class="tot"><span>🎁 Free: ${esc(freeLines()[0].n)} × ${FREE.q}</span><span>FREE</span></div>`:'')+
   (gst().mode!=='none'?`<div class="tot"><span>GST ${gst().rate}% ${gst().mode==='incl'?'(included)':''}</span><span>${money(t.gst)}</span></div>`:'')+
   (Math.abs(t.round)>=.005?`<div class="tot"><span>Round off</span><span>${money(t.round)}</span></div>`:'')+
   (t.adj?`<div class="tot"><span>Short-pay adjustment</span><span>−${money(t.adj)}</span></div>`:'')+
   `<div class="tot big"><span>Total</span><span>${money(t.total)}</span></div>`;
- $('done').disabled=!cart.length;discUi();
+ $('done').disabled=!cart.length;discUi();freeUi();
  $('billNo').textContent=EDITNO?'Editing bill no. '+bnNo(EDITNO):'Bill no. '+nextDn();editUi();renderPicks();barUi(t);saveDraft();backupUi();
 }
 $('cart').onclick=e=>{const x=e.target.closest('button[data-rm]');if(x){cart.splice(x.dataset.rm,1);renderCart();return}const b=e.target.closest('button[data-d]');if(!b)return;
@@ -1883,6 +1934,7 @@ function billText(s,wa){
  const st=S.set,d=new Date(s.t),B=x=>wa?'*'+x+'*':x;
  let t=B(st.name)+'\n'+(st.lic?'Licence: '+st.lic+'\n':'')+'Bill no. '+bn(s)+'\n'+d.toLocaleDateString('en-IN')+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+'\n'+(s.cust?'Customer: '+s.cust+'\n':'')+(s.by?'Billed by: '+s.by+'\n':'')+(s.ec?'Edited by: '+(s.eby||'?')+'\n':'')+'\n';
  s.lines.forEach(l=>{t+=l.n+'\n'+l.q+' x '+l.p+' = '+(l.q*l.p).toFixed(2)+'\n'});
+ (s.free||[]).forEach(f=>{t+=f.n+' (FREE gift)\n'+f.q+' x FREE\n'});
  t+='\nSubtotal: Rs '+s.sub.toFixed(2)+'\n';
  if(s.d)t+='Discount ('+fp(s.d,s.sub)+'%): -Rs '+s.d.toFixed(2)+'\n';
  if(s.mode!=='none')t+='GST '+s.rate+'%'+(s.mode==='incl'?' (included)':'')+': Rs '+s.gst.toFixed(2)+'\n';
@@ -1942,11 +1994,11 @@ function makePdf(s){
  const cQ=R-78,cP=R-42,cT=R,nameW=cQ-M-24;
  const head=()=>{F(H1,10.5);doc.setTextColor(0);doc.text('Item',M,y);doc.text('Quantity',cQ,y,{align:'right'});doc.text('Unit Price',cP,y,{align:'right'});doc.text('Total',cT,y,{align:'right'});y+=3;doc.setDrawColor(27,27,27);doc.setLineWidth(0.6);doc.line(M,y,R,y);y+=1};
  head();
- s.lines.forEach(l=>{
+ allLines(s).forEach(l=>{
   F(N,11);const n2=doc.splitTextToSize(String(l.n),nameW),h=Math.max(n2.length*5.2,5.2)+7;
   if(y+h>H-60){doc.addPage();y=22;head()}
   const ty=y+7;n2.forEach((t,i)=>doc.text(t,M,ty+i*5.2));
-  doc.text(String(l.q),cQ,ty,{align:'right'});doc.text(rs(l.p),cP,ty,{align:'right'});doc.text(rs(l.q*l.p),cT,ty,{align:'right'});
+  doc.text(String(l.q),cQ,ty,{align:'right'});doc.text(l.fr?'FREE':rs(l.p),cP,ty,{align:'right'});doc.text(l.fr?'FREE':rs(l.q*l.p),cT,ty,{align:'right'});
   y+=h;doc.setLineWidth(0.25);doc.line(M,y,R,y)});
  y+=7;
  /* summary */
@@ -2043,8 +2095,8 @@ function billImgDraw(c,s,paint){
  /* table */
  const cQ=R-390,cP=R-215,cT=R,nameW=cQ-M-90;
  F('700',26);T('Item',M,y);T('Quantity',cQ,y,INK,'right');T('Unit Price',cP,y,INK,'right');T('Total',cT,y,INK,'right');y+=14;L(M,y,R,y,INK,3);
- s.lines.forEach(l=>{F('400',28);const n2=wrap(l.n,nameW),h=Math.max(n2.length*34,34)+28,ty=y+40;
-  n2.forEach((t,i)=>T(t,M,ty+i*34));T(String(l.q),cQ,ty,INK,'right');T(rs(l.p),cP,ty,INK,'right');T(rs(l.q*l.p),cT,ty,INK,'right');
+ allLines(s).forEach(l=>{F('400',28);const n2=wrap(l.n,nameW),h=Math.max(n2.length*34,34)+28,ty=y+40;
+  n2.forEach((t,i)=>T(t,M,ty+i*34));T(String(l.q),cQ,ty,INK,'right');T(l.fr?'FREE':rs(l.p),cP,ty,INK,'right');T(l.fr?'FREE':rs(l.q*l.p),cT,ty,INK,'right');
   y+=h;L(M,y,R,y,'#cccccc',1.5)});
  y+=44;
  /* summary */
@@ -2094,7 +2146,7 @@ function showImg(s,raw,blob,name){
  $('iWa').onclick=()=>{let n=String(raw||s.phone||'').replace(/\D/g,'');if(n.length===11&&n[0]==='0')n=n.slice(1);if(n.length===10)n='91'+n;openUrl(n.length>=11&&n.length<=15?'https://wa.me/'+n:'https://web.whatsapp.com/')}}
 function curBill(){
  if(cart.length){const t=calc(),sel=document.querySelector('input[name=pay]:checked');
-  return{draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()}}
+  return{draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()}}
  return S.sales[S.sales.length-1]}
 $('sendWa').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');return}sendPdf(s,$('phone').value)};
 $('sendImg').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');return}sendImg(s,$('phone').value)};
@@ -2102,7 +2154,7 @@ $('sendImg').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');re
 $('print').onclick=()=>{
  if(!cart.length){const l=S.sales[S.sales.length-1];if(l)printBill(l);else toast('Nothing to print yet');return}
  const t=calc(),sel=document.querySelector('input[name=pay]:checked');
- printBill({draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()})};
+ printBill({draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()})};
 function renderHeld(){$('held').innerHTML=S.held.length?'<b class="muted">Held bills</b>'+S.held.map((h,i)=>`<div class="row" style="margin-top:4px"><span style="flex:1">${h.cart.length} items, ${esc(h.cust||'no name')}</span><button class="btn alt sm" data-r="${i}">Resume</button></div>`).join(''):''}
 $('held').onclick=e=>{const i=e.target.dataset.r;if(i===undefined)return;
  if(EDITNO){toast('Finish or cancel the bill edit first');return}
@@ -2116,11 +2168,13 @@ $('done').onclick=()=>{
  if(document.querySelector('input[name=pay]:checked').value==='Pay later'&&!$('cust').value.trim()&&!$('phone').value.trim()){toast('Enter the customer name or mobile number for Pay later');return}
  const SPE=nsCheck();if(SPE){toast(SPE);return}const SP=nsOn()?nsSplit():null;
  const t=calc();
+ const FL=freeLines();
+ for(const f of FL){if(!f.c)continue;const it=find(f.c),inC=cart.reduce((a,l)=>l.c===f.c?a+l.q:a,0);if(!it||inC+f.q>it.s){FREE=null;renderCart();toast('Not enough stock for the free gift. It was removed');return}}
  const lines=cart.map(l=>{const it=find(l.c);return{c:l.c,n:it.n,p:bp(it),k:it.k,q:l.q}});
  for(const l of cart){if(l.q>find(l.c).s){toast('Stock changed for '+find(l.c).n);return}}
  const sale={no:S.next,t:Date.now(),by:SYNC.who||'',lines,sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:'none',rate:0,
-  pay:SP?'Split':document.querySelector('input[name=pay]:checked').value,cust:$('cust').value.trim(),phone:$('phone').value.trim()};if(SP)sale.split=SP;
- cart.forEach(l=>{find(l.c).s-=l.q});
+  pay:SP?'Split':document.querySelector('input[name=pay]:checked').value,cust:$('cust').value.trim(),phone:$('phone').value.trim()};if(SP)sale.split=SP;if(FL.length)sale.free=FL;
+ cart.forEach(l=>{find(l.c).s-=l.q});FL.forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s-=f.q});FREE=null;
  S.sales.push(sale);S.next++;save();try{milestoneCheck();goalsCheck()}catch(e){}
  cart=[];$('disc').value='';$('paid').value='';$('cust').value='';$('phone').value='';renderCart();renderPicks();
  document.querySelectorAll('input[name=pay]').forEach(r=>r.checked=false);
@@ -2171,7 +2225,7 @@ function invHtml(s){
  <div class="meta"><div><b>Billed to:</b><br>${esc(s.cust||'Customer')}${s.phone?'<br>'+esc(s.phone):''}</div>
  <div class="rt">${s.by?'Billed by: '+esc(s.by)+'<br>':''}${s.ec?'Edited by: '+esc(s.eby||'?')+'<br>':''}${s.draft?'Payment pending':payLines(s).map(esc).join('<br>')}</div></div>
  <table><tr><th>Item</th><th class="n">Quantity</th><th class="n">Unit Price</th><th class="n">Total</th></tr>
- ${s.lines.map(l=>`<tr><td>${esc(l.n)}</td><td class="n">${l.q}</td><td class="n">${money(l.p)}</td><td class="n">${money(l.q*l.p)}</td></tr>`).join('')}</table>
+ ${allLines(s).map(l=>`<tr><td>${esc(l.n)}</td><td class="n">${l.q}</td><td class="n">${l.fr?'FREE':money(l.p)}</td><td class="n">${l.fr?'FREE':money(l.q*l.p)}</td></tr>`).join('')}</table>
  <div class="sum">${sumRow('Subtotal',money(s.sub))}
  ${s.d?sumRow('Diwali discount ('+fp(s.d,s.sub)+'%)','-'+money(s.d),'dc'):''}
  ${s.mode!=='none'?sumRow('Tax (GST '+s.rate+'%'+(s.mode==='incl'?', included':'')+')',money(s.gst)):''}
@@ -2367,13 +2421,13 @@ function renderSales(){
 $('bills').onclick=e=>{const ed=e.target.dataset.e;if(ed)e.stopPropagation();if(ed){openEdit(ed);return}const p=e.target.dataset.p;if(p){printBill(S.sales.find(s=>s.no==p));return}const r=e.target.closest('tr[data-v]');if(r)viewBill(r.dataset.v)};
 function viewBill(no){
  const s=S.sales.find(x=>x.no==no);if(!s)return;const d=new Date(s.t);
- const cogs=s.lines.reduce((a,l)=>{const it=find(l.c);return a+(l.k!==undefined?l.k:(it?it.k:0))*l.q},0),profit=s.total-s.gst-cogs;
+ const cogs=s.lines.reduce((a,l)=>{const it=find(l.c);return a+(l.k!==undefined?l.k:(it?it.k:0))*l.q},0)+fcost(s),profit=s.total-s.gst-cogs;
  const tr=(a,b,bd)=>`<tr><td colspan="3">${bd?'<b>'+a+'</b>':a}</td><td class="r">${bd?'<b>'+b+'</b>':b}</td></tr>`;
  $('mBody').innerHTML=`<div class="row" style="justify-content:space-between"><b style="font-size:20px">Bill no. ${bn(s)}${s.void?' (cancelled)':''}</b><button class="btn alt sm" id="mClose">Close</button></div>
  <p class="muted" style="margin:4px 0 8px">${d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}, ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}<br>Customer: ${esc(s.cust||'Not entered')}<br>Mobile: ${esc(s.phone||'Not entered')}<br>Paid by: ${esc(payTxt(s))}<br>Billed by: <b>${esc(s.by||'Not recorded')}</b><br>Created on ${d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}${s.ec?'<br>Edited by '+esc(s.eby||'?')+', '+new Date(s.et).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+' '+new Date(s.et).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+(s.ot!==undefined&&s.ot!==s.total?' (first total '+money(s.ot)+')':''):''}</p>
  ${s.ec&&(s.eh&&s.eh.length||s.er)?'<div style="border:1px solid var(--warn);border-radius:10px;padding:8px 10px;margin-bottom:8px"><b>Edit history</b>'+(s.eh&&s.eh.length?s.eh.map(h=>'<div style="margin-top:4px"><span class="muted">'+new Date(h.t).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' '+new Date(h.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+'</span> · <b>'+esc(h.by||'?')+'</b>'+(h.ot!==undefined&&h.ot!==h.nt?' · '+money(h.ot)+' to '+money(h.nt):'')+(h.r?'<br>Reason: '+esc(h.r):'')+(h.pm?'<br>Paid by: '+esc(h.pm):'')+'</div>').join(''):(s.er?'<div style="margin-top:4px">Reason: '+esc(s.er)+'</div>':''))+'</div>':''}
  <div class="scroll"><table class="table"><tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr>
- ${s.lines.map(l=>`<tr><td>${esc(l.n)}</td><td class="r">${l.q}</td><td class="r">${money(l.p)}</td><td class="r">${money(l.p*l.q)}</td></tr>`).join('')}
+ ${allLines(s).map(l=>`<tr><td>${esc(l.n)}</td><td class="r">${l.q}</td><td class="r">${l.fr?'FREE':money(l.p)}</td><td class="r">${l.fr?'FREE':money(l.p*l.q)}</td></tr>`).join('')}
  ${tr('Subtotal',money(s.sub))}${s.d?tr('Discount ('+fp(s.d,s.sub)+'%)','−'+money(s.d)):''}${s.mode!=='none'?tr('GST '+s.rate+'%'+(s.mode==='incl'?' (included)':''),money(s.gst)):''}${Math.abs(s.round)>=.005?tr('Round off',money(s.round)):''}${s.adj?tr('Short-pay adjustment','−'+money(s.adj)):''}${tr('Total',money(s.total),1)}</table></div>
  <p class="muted">Profit on this bill (after cost, before expenses): <b style="color:${profit>=0?'var(--ok)':'var(--acc)'}">${money(profit)}</b></p>
  <input id="mPhone" type="tel" inputmode="numeric" placeholder="Customer mobile number" value="${esc(s.phone||'')}" style="margin-bottom:8px">
@@ -2383,7 +2437,7 @@ function viewBill(no){
  $('mWa').onclick=()=>sendPdf(s,$('mPhone').value);$('mImg').onclick=()=>sendImg(s,$('mPhone').value);
  if($('mEdit'))$('mEdit').onclick=()=>openEdit(s.no);
  if($('mRestore'))$('mRestore').onclick=()=>restoreBill(s.no);
- if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
+ if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});(s.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s+=f.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
 /* ===== edit a saved bill ===== */
 let EB=null;
 function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
@@ -2523,7 +2577,7 @@ const dk=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+
 function pl(key){
  const ss=S.sales.filter(s=>dk(s.t)===key&&!s.void),ex=S.exp.filter(e=>e.d===key);
  let gross=0,disc=0,gst=0,total=0,cogs=0,adj=0;const m={};
- ss.forEach(s=>{gross+=s.sub;disc+=s.d;adj+=s.adj||0;gst+=s.gst;total+=s.total;
+ ss.forEach(s=>{cogs+=fcost(s);gross+=s.sub;disc+=s.d;adj+=s.adj||0;gst+=s.gst;total+=s.total;
   s.lines.forEach(l=>{const it=find(l.c);const k=l.k!==undefined?l.k:(it?it.k:0);cogs+=k*l.q;
    const r=m[l.n]=m[l.n]||{q:0,a:0,c:0};r.q+=l.q;r.a+=l.p*l.q;r.c+=k*l.q})});
  const e=ex.reduce((a,x)=>a+x.a,0),net=total-gst;
@@ -2705,7 +2759,7 @@ $('dpSave').onclick=()=>{const a=[];for(let i=0;i<3;i++){let v=parseFloat($('dpv
  S.set.dp=a;S.set.dauto=$('dpAuto').checked;save();dpLoad();renderCart();toast('Discounts saved')};
 $('sSurgeSave').onclick=()=>{S.set.surge=$('sSurge').checked;S.set.spct=parseFloat($('sSpct').value)||15;save();refresh();toast('Saved')};
 function dpLoad(){const P=dpr();P.forEach((p,i)=>{const m=$('dpm'+i),v=$('dpv'+i);if(m&&document.activeElement!==m)m.value=p.m;if(v&&document.activeElement!==v)v.value=p.v});$('dpAuto').checked=S.set.dauto!==false}
-function loadSetup(){dpLoad();exLoad();goalsUi();$('sPhone').value=S.set.phone||'';sumLoad();const s=S.set;{const nb=$('sNotes');if(nb&&document.activeElement!==nb)nb.value=s.notes||'';const ni=$('notesInfo');if(ni)ni.textContent=s.notesAt?'Saved '+new Date(s.notesAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}$('sName').value=s.name;$('sLic').value=s.lic;$('sLow').value=s.low;$('sUpi').value=s.upi||'';$('sQuote').value=s.quote||'';$('sSurge').checked=!!s.surge;$('sSpct').value=s.spct||15;$('sPin').value=myPin();$('sPinLbl').textContent='PIN for '+(SYNC.who||'this phone')}
+function loadSetup(){dpLoad();cpLoad();exLoad();goalsUi();$('sPhone').value=S.set.phone||'';sumLoad();const s=S.set;{const nb=$('sNotes');if(nb&&document.activeElement!==nb)nb.value=s.notes||'';const ni=$('notesInfo');if(ni)ni.textContent=s.notesAt?'Saved '+new Date(s.notesAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}$('sName').value=s.name;$('sLic').value=s.lic;$('sLow').value=s.low;$('sUpi').value=s.upi||'';$('sQuote').value=s.quote||'';$('sSurge').checked=!!s.surge;$('sSpct').value=s.spct||15;$('sPin').value=myPin();$('sPinLbl').textContent='PIN for '+(SYNC.who||'this phone')}
 ['sName','sPhone','sLic','sLow','sUpi','sQuote'].forEach(id=>$(id).onchange=()=>{
  S.set=Object.assign({},S.set,{name:$('sName').value.trim()||'MY SHOP',lic:$('sLic').value.trim(),low:parseInt($('sLow').value)||0,upi:$('sUpi').value.trim(),quote:$('sQuote').value.trim(),phone:$('sPhone').value.trim(),pin:S.set.pin||''});
  save();head();toast('Saved')});
@@ -2910,7 +2964,7 @@ function onPins(snap){const m={};snap.docs.map(d=>d.data()).sort((a,b)=>a.t-b.t)
 const COLS=['items','sales','exp','pays','buys'];
 const KEYF={items:i=>String(i.c),sales:s=>String(s.no),exp:e=>String(e.id),pays:p=>String(p.t),buys:b=>String(b.t)};
 const J=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort()):v);
-function stockMap(){const m={};S.buys.forEach(b=>m[b.c]=(m[b.c]||0)+b.q);S.sales.forEach(s=>{if(!s.void)s.lines.forEach(l=>m[l.c]=(m[l.c]||0)-l.q)});return m}
+function stockMap(){const m={};S.buys.forEach(b=>m[b.c]=(m[b.c]||0)+b.q);S.sales.forEach(s=>{if(!s.void){s.lines.forEach(l=>m[l.c]=(m[l.c]||0)-l.q);(s.free||[]).forEach(f=>{if(f.c)m[f.c]=(m[f.c]||0)-f.q})}});return m}
 function localBs(){const m=stockMap();S.items.forEach(i=>{i.b=i.s-(m[i.c]||0)})}
 function recalcS(){const m=stockMap();S.items.forEach(i=>{i.s=(i.b||0)+(m[i.c]||0)})}
 function fixNext(){S.next=Math.max(S.next||1,Math.max(0,...S.sales.map(s=>s.no))+1)}
@@ -3756,7 +3810,7 @@ function restoreBill(no){
  const low=[];s.lines.forEach(l=>{const it=find(l.c);if(it&&it.s<l.q)low.push(it.n+' (have '+it.s+', need '+l.q+')')});
  const msg='Restore bill '+bn(s)+'? It comes back into sales and profit, and its stock is taken out again.'+(low.length?' Low stock: '+low.join(', ')+'. Stock will go below zero.':'');
  guard('cancel',msg,'Restore bill',()=>{const b=S.sales.find(x=>x.no==no);if(!b||!b.void)return;
-  b.lines.forEach(l=>{const it=find(l.c);if(it)it.s-=l.q});
+  b.lines.forEach(l=>{const it=find(l.c);if(it)it.s-=l.q});(b.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s-=f.q});
   b.void=false;delete b.vby;b.rb=SYNC.who||'';b.rt=Date.now();
   save();renderSales();if($('t-report').classList.contains('on'))renderReport();toast('Bill '+bn(b)+' restored')})}
 function openTrash(){
@@ -3884,7 +3938,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
   const m={};
   S.sales.forEach(s=>{if(s.void)return;const k=dk(s.t);if(from&&k<from)return;
    const w=s.by||'Not recorded',o=m[w]=m[w]||{n:0,total:0,profit:0,cash:0,upi:0,later:0};
-   const cogs=s.lines.reduce((a,l)=>{const i=find(l.c);return a+(l.k!==undefined?l.k:(i?i.k:0))*l.q},0);
+   const cogs=s.lines.reduce((a,l)=>{const i=find(l.c);return a+(l.k!==undefined?l.k:(i?i.k:0))*l.q},0)+fcost(s);
    o.n++;o.total+=s.total;o.profit+=s.total-s.gst-cogs;o.cash+=payAmt(s,'Cash');o.upi+=payAmt(s,'UPI');o.later+=payAmt(s,'Pay later')});
   const rows=Object.entries(m).sort((a,b)=>b[1].total-a[1].total);
   c.innerHTML='<div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><b style="font-size:18px">👥 Staff sales report</b><select id="xStaffR" style="width:auto">'+opt('1','Today',r)+opt('7','Last 7 days',r)+opt('30','Last 30 days',r)+opt('all','All time',r)+'</select></div>'+
@@ -4151,7 +4205,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.5';                                   /* change this on every release */
+ const APP_VERSION='1.3.6';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);

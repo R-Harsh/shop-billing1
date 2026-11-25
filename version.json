@@ -1,6 +1,6 @@
 {
-  "version": "1.3.5",
-  "notes": "Setup now shows Connected on the Supabase and Google Sheet Connect buttons, so you can see at a glance when they are linked.",
+  "version": "1.3.6",
+  "notes": "Small improvements and fixes.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
