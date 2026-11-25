@@ -1,6 +1,6 @@
 {
   "version": "1.3.2",
-  "notes": "Close day button moved between the Supabase and user name buttons in the top bar.",
+  "notes": "Icons added to every tab. Close day now needs the counted cash, an Are you sure question and your PIN.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

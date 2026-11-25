@@ -207,6 +207,11 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
 #itemTable .ibtn .btn{width:100%}
 @media(max-width:700px){#t-items .scroll{overflow-x:auto}#itemTable{min-width:830px}}
 
+
+/* ===== tab icons ===== */
+nav button{display:inline-flex;align-items:center;gap:7px}
+nav button .ni{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+nav button *{pointer-events:none}
 /* ===== idle signboard + milestone celebration ===== */
 .fwo{position:fixed;inset:0;z-index:2147483000;background:radial-gradient(ellipse at 50% 120%,#1b1440,#060918 70%);color:#fff;text-align:center;cursor:pointer;animation:fade .6s ease both;-webkit-tap-highlight-color:transparent;overflow:hidden}
 .fwo canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -229,17 +234,17 @@ main{max-width:none;margin:0;padding-left:16px;padding-right:16px}
  <h1 id="hName">MY <span>SHOP</span></h1>
  <button id="themeBtn" class="btn alt sm" style="margin-left:auto" type="button" aria-pressed="false"></button><button id="syncRefBtn" class="btn alt sm" title="Refresh and reconnect" aria-label="Refresh"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.6L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.6L20 15.5"/><path d="M20 20v-4.5h-4.5"/></svg></button><button id="syncTabBtn" data-t="sync" class="btn alt sm">📡 Live Sync</button><button id="connBtn" class="btn alt sm">… Connecting</button><button id="closeDayBtn" class="btn alt sm" type="button" title="Close the day and see the full day summary">🌙 Close day</button><button id="who" class="btn alt sm"></button>
  <nav id="nav">
-  <button data-t="bill" class="on">Bill</button>
-  <button data-t="items">Items &amp; stock</button>
-  <button data-t="sales">Sales</button>
-  <button data-t="report">Day report (P&amp;L)</button>
-  <button data-t="cash">Cash Book</button>
-  <button data-t="cust">Pending Payment</button>
-  <button data-t="season">Season</button>
-  <button data-t="lock" id="lockBtn" style="display:none">Lock</button>
-  <button data-t="log">Activity</button>
-  <button data-t="setup">Setup</button>
-  <button data-t="admin">Admin</button>
+  <button data-t="bill" class="on"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill</button>
+  <button data-t="items"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>Items &amp; stock</button>
+  <button data-t="sales"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Sales</button>
+  <button data-t="report"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v18h17"/><path d="M8 17v-5M12 17V8M16 17v-8"/></svg>Day report (P&amp;L)</button>
+  <button data-t="cash"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h12v4"/><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 13.5h2"/></svg>Cash Book</button>
+  <button data-t="cust"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Pending Payment</button>
+  <button data-t="season"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h2M12 14h2M8 17h2"/></svg>Season</button>
+  <button data-t="lock" id="lockBtn" style="display:none"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Lock</button>
+  <button data-t="log"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Activity</button>
+  <button data-t="setup"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Setup</button>
+  <button data-t="admin"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Admin</button>
  </nav>
 </header>
 <main><div id="bkNote" class="card" style="display:none;margin-bottom:12px;font-weight:600"></div><div id="abBar" class="card" style="display:none;margin-bottom:12px;font-weight:600;cursor:pointer;border-color:var(--warn);color:var(--warn)">Tap here to allow today&rsquo;s automatic backup</div>
@@ -3692,7 +3697,7 @@ function cdPaint(){
   (dues.length?'<div class="card" style="margin-bottom:10px;border-color:var(--acc)"><b style="color:var(--acc)">\u26D4 The day cannot be closed yet. '+dues.length+' customer'+(dues.length>1?'s':'')+' took Pay later and still owe '+M(dueTot)+'.</b><div class="scroll"><table class="table" style="margin:8px 0"><tr><th>Customer</th><th>Mobile</th><th class="r">Pay later today</th><th class="r">Still pending</th></tr>'+dues.map(r=>'<tr><td>'+esc(r.n||'(Name not saved)')+'</td><td>'+esc(r.ph||'-')+'</td><td class="r">'+M(r.today)+'</td><td class="r"><b>'+M(r.due)+'</b></td></tr>').join('')+'</table></div><span class="muted">Collect the money in the Pending Payment tab (Receive). Then come back and close the day.</span><div class="row" style="margin-top:8px"><button class="btn sm" id="cdGo" type="button">Open Pending Payment</button></div></div>':'')+
   (warn.length?'<div class="card" style="margin-bottom:10px;border-color:var(--warn);color:var(--warn);font-weight:600">Before you close: '+esc(warn.join('; '))+'.</div>':'')+
   '<div id="cdBody">'+cdHtml(key)+'</div>'+
-  '<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (optional, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
+  '<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
   '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+(dues.length?' disabled title="Settle all Pay later first"':'')+'>'+(dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 '+(st?'Update closing':'Close day'))+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
  $('modal').style.display='flex';
  $('cdNo').onclick=closeBill;
@@ -3703,12 +3708,25 @@ function cdPaint(){
   $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing summary for '+fm+'</div>'+(c?'<div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>':'')+cdHtml(key,v>=0?v:undefined);
   closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)};
  $('cdOk').onclick=()=>{if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
-  const v=parseFloat($('cdCash').value),who=(window.SYNC&&SYNC.who)||'';
-  if($('cdCash').value.trim()!==''&&!(v>=0)){toast('Enter a valid cash amount or leave it empty');return}
-  if(v>=0){S.pays=S.pays.filter(x=>!(x.cb==='end'&&(x.dd||dk(x.t))===key));S.pays.push({t:Date.now(),cb:'end',a:v,dd:key,by:who})}
+  const v=parseFloat($('cdCash').value);
+  if($('cdCash').value.trim()===''||!(v>=0)){toast('Enter the cash counted in the drawer. It is required to close the day');$('cdCash').focus();$('cdCash').style.borderColor='var(--acc)';return}
+  cdConfirm(key,v)}}
+function cdConfirm(key,v){
+ const who=(window.SYNC&&SYNC.who)||'',pin=((window.SYNC&&SYNC.pins)||{})[who]||'',M=money,{R}=cdCash(key),
+  dt=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ if(!who||!pin){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>PIN needed</b></p><p>Closing the day needs your PIN. Tap your name at the top, choose who you are and set a PIN first.</p><div class="row"><button class="btn alt" id="ccBk">Back</button></div>';$('ccBk').onclick=cdPaint;return}
+ const diff=Math.round((v-R.expCount)*100)/100;
+ $('mBody').style.maxWidth='460px';
+ $('mBody').innerHTML='<p style="font-size:20px;margin-top:0"><b>Are you sure you want to close the day?</b></p><p style="margin:4px 0">'+esc(dt)+'</p><p style="margin:4px 0">Cash counted: <b>'+M(v)+'</b> &middot; '+(diff===0?'<span style="color:var(--ok)">matches the app</span>':diff<0?'<span style="color:var(--acc)">short by '+M(-diff)+'</span>':'<span style="color:var(--warn)">extra '+M(diff)+'</span>')+'</p><p class="muted" style="margin:8px 0 6px">Enter the PIN of <b>'+esc(who)+'</b> to confirm.</p><input id="ccPin" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" maxlength="8" placeholder="PIN" style="margin-bottom:8px;-webkit-text-security:disc"><p id="ccMsg" style="color:var(--acc);margin:0 0 8px;min-height:1.2em"></p><div class="row" style="flex-wrap:wrap"><button class="btn" id="ccYes" type="button">Yes, close the day</button><button class="btn alt" id="ccNo" type="button">No, go back</button></div>';
+ $('modal').style.display='flex';$('ccPin').focus();
+ $('ccNo').onclick=cdPaint;
+ const go=()=>{if($('ccPin').value!==pin){$('ccMsg').textContent='Wrong PIN, try again';$('ccPin').value='';$('ccPin').focus();return}
+  if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
+  S.pays=S.pays.filter(x=>!(x.cb==='end'&&(x.dd||dk(x.t))===key));S.pays.push({t:Date.now(),cb:'end',a:v,dd:key,by:who});
   const m=S.set.dayClosed=S.set.dayClosed||{};m[key]={t:Date.now(),by:who};
   const ks=Object.keys(m).sort();while(ks.length>120)delete m[ks.shift()];
-  save();if(typeof renderCash==='function')renderCash();cdPaint();toast('Day closed: '+new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}))}}
+  save();if(typeof renderCash==='function')renderCash();$('mBody').style.maxWidth='760px';cdPaint();toast('Day closed: '+new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}))};
+ $('ccYes').onclick=go;$('ccPin').onkeydown=e=>{if(e.key==='Enter')go()}}
 $('closeDayBtn').onclick=()=>{CD.unl=false;cdOpen()};
 
 /* ===== cancelled bills (trash) with restore ===== */
