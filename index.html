@@ -3214,10 +3214,11 @@ setInterval(()=>{try{const c=document.querySelector('input[name=pay]:checked'),n
  function card(){const ts=document.getElementById('t-setup');if(!ts)return;
   ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>Google Sheet (live bill list)</b><p class="muted" id="sheetMsg" style="margin:4px 0 8px"></p><input id="sheetUrl" placeholder="Web app link from Google (starts with https://script.google.com)" autocomplete="off" autocapitalize="off"><input id="sheetSec" placeholder="Secret word (same as in the Google script)" autocomplete="off" autocapitalize="off" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" id="sheetSave">Save and send</button><button class="btn alt" id="sheetTest">Test</button><button class="btn alt" id="sheetOff">Disconnect</button><button class="btn alt" id="sheetClear">Clear sheet</button></div></div>');
   const u=document.getElementById('sheetUrl'),sc=document.getElementById('sheetSec');u.value=url();sc.value=sec();
+  const lock=()=>{if(window.claude)return;const on=!!url(),sv=document.getElementById('sheetSave');sv.disabled=on;u.disabled=on;sc.disabled=on;sv.textContent=on?'\u2713 Connected':'Save and send'};lock();
   msg(url()?'Connected. Every new, edited or cancelled bill is sent to your sheet.':'Not connected. Bills stay only in this app.');
   if(window.claude){msg('Google Sheet works only in the installed Windows app, not on the Claude web page.');['sheetSave','sheetTest','sheetOff','sheetClear'].forEach(i=>{document.getElementById(i).disabled=true})}
   document.getElementById('sheetSave').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\//.test(v)){toast('Paste the Web app link that starts with https://script.google.com');return}
-   SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());SS('sb-sheet-sent','{}');msg('Sending all bills to the sheet...');kick()};
+   SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());SS('sb-sheet-sent','{}');msg('Sending all bills to the sheet...');lock();kick()};
   document.getElementById('sheetTest').onclick=async()=>{const v=u.value.trim();if(!v){toast('Paste the link first');return}
    SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());msg('Testing...');
    try{const j=await post({ping:true});msg(j&&j.ok?'Test passed. Your Google Sheet answered. Now press Save and send.':'The sheet answered but refused: '+((j&&j.error)||'unknown'))}
@@ -3230,7 +3231,7 @@ setInterval(()=>{try{const c=document.querySelector('input[name=pay]:checked'),n
      else if(j&&j.ok){msg('The sheet answered but did not clear. Update the Google script with the clear code, then deploy a new version.');toast('Google script needs the update')}
      else{msg('The sheet refused: '+((j&&j.error)||'unknown'));toast('Sheet not cleared')}}
     catch(e){msg('Could not reach the sheet. Check the internet and try again.');toast('Sheet not reached')}})};
-  document.getElementById('sheetOff').onclick=()=>{SS('sb-sheet-url','');SS('sb-sheet-sec','');SS('sb-sheet-sent','{}');u.value='';sc.value='';msg('Not connected. Bills stay only in this app.')}}
+  document.getElementById('sheetOff').onclick=()=>{SS('sb-sheet-url','');SS('sb-sheet-sec','');SS('sb-sheet-sent','{}');u.value='';sc.value='';lock();msg('Not connected. Bills stay only in this app.')}}
  card();kick();
 })();
 const SB_URL='https://zjcyhodgryryusgxzral.supabase.co/rest/v1',SB_KEY='sb_publishable_cuDCkVgzwNO0vXgv5LhUrw_fAu6SHM7';
@@ -3275,7 +3276,7 @@ function makeDb(shop){
     const n=parseInt((r.headers.get('content-range')||'').split('/')[1]);if(!isNaN(n))out[c]=n}finally{clearTimeout(tm)}}
   return out},verify:async()=>{try{const r=await rq('/shops?code=eq.'+enc(shop)+'&select=code,name',{},8000);return Array.isArray(r)&&r.length===1}catch(e){return false}}}}
 const MODE_TXT={web:'Mode: Claude web page. Data is shared through Claude with everyone who opens this page. Google Sheet is not available in this mode.',cloud:'Mode: cloud sync with your shop code. Devices with the same code share the data.',local:'Mode: this PC only. Bills are saved in this browser.'};
-function setMode(k){SYNC.mode=k;const e=document.getElementById('aboutMode');if(e)e.textContent=MODE_TXT[k]||'';if(typeof connUi==='function')connUi()}
+function setMode(k){SYNC.mode=k;const e=document.getElementById('aboutMode');if(e)e.textContent=MODE_TXT[k]||'';if(typeof connUi==='function')connUi();if(window.dbLock)window.dbLock()}
 async function getDb(){let c='';try{c=localStorage.getItem('sb-shop')||''}catch(e){}
  if(c){const db=makeDb(c);if(await db.verify()){setMode('cloud');return db}
   if(!window.claude)toast('Sync code not valid, switched off, or no internet. Working on this PC only.')}
@@ -3286,6 +3287,9 @@ async function getDb(){let c='';try{c=localStorage.getItem('sb-shop')||''}catch(
  $('syncCode').value=c;
  $('syncMsg').textContent=c?'A shop code is saved. Green dot at the top means this device is connected.':'Not connected. This PC keeps its own bills only.';
  if(window.claude){$('syncMsg').textContent='On the Claude web page the data is already shared through Claude. Shop codes work only in the installed Windows app.';$('syncOn').disabled=true;$('syncOff').disabled=true}
+ window.dbLock=()=>{if(window.claude)return;const on=SYNC.mode==='cloud';$('syncOn').disabled=on;$('syncCode').disabled=on;$('syncOn').textContent=on?'\u2713 Connected':'Connect';
+  let sv='';try{sv=localStorage.getItem('sb-shop')||''}catch(e){}
+  $('syncMsg').textContent=on?'\u2713 Connected to Supabase. To use a different shop code, press Disconnect first.':(sv?'A shop code is saved. Green dot at the top means this device is connected.':'Not connected. This PC keeps its own bills only.')};window.dbLock();
  $('syncOn').onclick=()=>{const v=$('syncCode').value.trim();if(!v){toast('Enter your shop code');return}try{localStorage.setItem('sb-shop',v)}catch(e){}location.reload()};
  $('syncOff').onclick=()=>{try{localStorage.removeItem('sb-shop')}catch(e){}location.reload()}})();
 
@@ -4027,7 +4031,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.2.8';                                   /* change this on every release */
+ const APP_VERSION='1.2.9';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
