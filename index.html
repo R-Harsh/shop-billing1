@@ -3698,7 +3698,7 @@ function cdPaint(){
   (warn.length?'<div class="card" style="margin-bottom:10px;border-color:var(--warn);color:var(--warn);font-weight:600">Before you close: '+esc(warn.join('; '))+'.</div>':'')+
   '<div id="cdBody">'+cdHtml(key)+'</div>'+
   '<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
-  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+(dues.length?' disabled title="Settle all Pay later first"':'')+'>'+(dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 '+(st?'Update closing':'Close day'))+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
+  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+(dues.length?' disabled title="Settle all Pay later first"':'')+'>'+(dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 Close the day')+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
  $('modal').style.display='flex';
  $('cdNo').onclick=closeBill;
  if($('cdGo'))$('cdGo').onclick=()=>{closeBill();show('cust')};
@@ -3712,7 +3712,7 @@ function cdPaint(){
   if($('cdCash').value.trim()===''||!(v>=0)){toast('Enter the cash counted in the drawer. It is required to close the day');$('cdCash').focus();$('cdCash').style.borderColor='var(--acc)';return}
   cdConfirm(key,v)}}
 function cdConfirm(key,v){
- const who=(window.SYNC&&SYNC.who)||'',pin=((window.SYNC&&SYNC.pins)||{})[who]||'',M=money,{R}=cdCash(key),
+ const who=SYNC.who||'',pin=myPin()||'',M=money,{R}=cdCash(key),
   dt=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
  if(!who||!pin){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>PIN needed</b></p><p>Closing the day needs your PIN. Tap your name at the top, choose who you are and set a PIN first.</p><div class="row"><button class="btn alt" id="ccBk">Back</button></div>';$('ccBk').onclick=cdPaint;return}
  const diff=Math.round((v-R.expCount)*100)/100;
@@ -4133,7 +4133,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.3';                                   /* change this on every release */
+ const APP_VERSION='1.3.4';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
