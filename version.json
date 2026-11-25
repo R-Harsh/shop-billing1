@@ -1,6 +1,6 @@
 {
-  "version": "1.3.4",
-  "notes": "Close day now asks Are you sure and your PIN, and the button says Close the day.",
+  "version": "1.3.5",
+  "notes": "Setup now shows Connected on the Supabase and Google Sheet Connect buttons, so you can see at a glance when they are linked.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
