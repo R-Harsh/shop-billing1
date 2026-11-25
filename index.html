@@ -3670,6 +3670,12 @@ function cdHtml(key,cnt){
   tr('Items finished (0 stock)',fin.length)+tr('Items running low (at or below '+low+')',lw.length)+'</table>'+
   ((fin.length||lw.length)?'<p class="muted" style="margin:0 0 12px">Refill soon: '+fin.slice(0,8).map(i=>esc(i.n)+' (0)').concat(lw.slice(0,8).map(i=>esc(i.n)+' ('+i.s+')')).join(', ')+((fin.length>8||lw.length>8)?' and more':'')+'</p>':'');
  return sales+pay+profit+cash+(staff?'<div style="margin-bottom:4px"><b>Staff today</b></div>'+staff:'')+sold+stock}
+/* customers who took Pay later on this day and still owe money: the day cannot be closed until they pay */
+function cdDues(key){
+ const cd=custData(),m={};
+ S.sales.filter(x=>!x.void&&dk(x.t)===key).forEach(x=>{const a=payAmt(x,'Pay later');if(!(a>0))return;
+  const k=ck(x)||'__noname',r=m[k]=m[k]||{k,n:'',ph:'',today:0};r.today+=a;r.n=r.n||x.cust||'';r.ph=r.ph||x.phone||''});
+ return Object.values(m).map(r=>{const c=cd[r.k];r.due=c?c.due:r.today;if(c){r.n=c.n||r.n;r.ph=c.ph||r.ph}return r}).filter(r=>r.due>0)}
 function cdOpen(key){
  if(tabNeedsAdmin('report')&&!key&&!CD.unl){adminGate('Admin PIN needed to see the day summary and profit',()=>{CD.unl=true;cdOpen()});return}
  CD.day=key||CD.day||dk(new Date());if(!key)CD.day=dk(new Date());cdPaint()}
@@ -3679,22 +3685,25 @@ function cdPaint(){
  if((S.held||[]).length)warn.push((S.held||[]).length+' bill'+(S.held.length>1?'s are':' is')+' still on hold');
  if(typeof cart!=='undefined'&&cart.length&&key===today)warn.push('the current bill on the Bill page is not saved');
  try{if(window.sheetOn&&sheetOn()&&sheetPending()>0)warn.push(sheetPending()+' bill(s) not yet sent to Google Sheet')}catch(e){}
- const{d,R}=cdCash(key);
+ const{d,R}=cdCash(key),dues=cdDues(key),dueTot=dues.reduce((a,r)=>a+r.due,0);
  $('mBody').style.maxWidth='760px';
  $('mBody').innerHTML='<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:20px">\uD83C\uDF19 Close the day</b><input type="date" id="cdDate" value="'+key+'" max="'+today+'" style="width:auto"></div>'+
   (st?'<div class="card" style="margin-bottom:10px;border-color:var(--ok);color:var(--ok);font-weight:600">\u2713 Day closed at '+new Date(st.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(st.by?' by '+esc(st.by):'')+'. You can still update it below.</div>':'')+
+  (dues.length?'<div class="card" style="margin-bottom:10px;border-color:var(--acc)"><b style="color:var(--acc)">\u26D4 The day cannot be closed yet. '+dues.length+' customer'+(dues.length>1?'s':'')+' took Pay later and still owe '+M(dueTot)+'.</b><div class="scroll"><table class="table" style="margin:8px 0"><tr><th>Customer</th><th>Mobile</th><th class="r">Pay later today</th><th class="r">Still pending</th></tr>'+dues.map(r=>'<tr><td>'+esc(r.n||'(Name not saved)')+'</td><td>'+esc(r.ph||'-')+'</td><td class="r">'+M(r.today)+'</td><td class="r"><b>'+M(r.due)+'</b></td></tr>').join('')+'</table></div><span class="muted">Collect the money in the Pending Payment tab (Receive). Then come back and close the day.</span><div class="row" style="margin-top:8px"><button class="btn sm" id="cdGo" type="button">Open Pending Payment</button></div></div>':'')+
   (warn.length?'<div class="card" style="margin-bottom:10px;border-color:var(--warn);color:var(--warn);font-weight:600">Before you close: '+esc(warn.join('; '))+'.</div>':'')+
   '<div id="cdBody">'+cdHtml(key)+'</div>'+
   '<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (optional, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
-  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button">\u2705 '+(st?'Update closing':'Close day')+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
+  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+(dues.length?' disabled title="Settle all Pay later first"':'')+'>'+(dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 '+(st?'Update closing':'Close day'))+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
  $('modal').style.display='flex';
  $('cdNo').onclick=closeBill;
+ if($('cdGo'))$('cdGo').onclick=()=>{closeBill();show('cust')};
  $('cdDate').onchange=e=>{CD.day=e.target.value||today;cdPaint()};
  $('cdCash').oninput=()=>{const v=parseFloat($('cdCash').value);$('cdBody').innerHTML=cdHtml(key,v>=0?v:undefined)};
  $('cdPdf').onclick=()=>{const v=parseFloat($('cdCash').value),stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),c=(S.set.dayClosed||{})[key];
   $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing summary for '+fm+'</div>'+(c?'<div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>':'')+cdHtml(key,v>=0?v:undefined);
   closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)};
- $('cdOk').onclick=()=>{const v=parseFloat($('cdCash').value),who=(window.SYNC&&SYNC.who)||'';
+ $('cdOk').onclick=()=>{if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
+  const v=parseFloat($('cdCash').value),who=(window.SYNC&&SYNC.who)||'';
   if($('cdCash').value.trim()!==''&&!(v>=0)){toast('Enter a valid cash amount or leave it empty');return}
   if(v>=0){S.pays=S.pays.filter(x=>!(x.cb==='end'&&(x.dd||dk(x.t))===key));S.pays.push({t:Date.now(),cb:'end',a:v,dd:key,by:who})}
   const m=S.set.dayClosed=S.set.dayClosed||{};m[key]={t:Date.now(),by:who};
@@ -4106,7 +4115,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.0';                                   /* change this on every release */
+ const APP_VERSION='1.3.1';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
