@@ -1,6 +1,6 @@
 {
-  "version": "1.2.9",
-  "notes": "Setup: the Connect and Save and send buttons are now disabled while the database and Google Sheet are connected. Press Disconnect to change them.",
+  "version": "1.3.0",
+  "notes": "New Close day button in the top bar. It shows the full day summary (sales, payments, profit, cash drawer, staff, stock), saves the counted cash and marks the day closed.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
