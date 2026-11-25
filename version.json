@@ -1,6 +1,6 @@
 {
-  "version": "1.2.7",
-  "notes": "Updates now happen only when you ask: Setup > Check for update, then Download & install.\nThe app no longer checks or shows update banners by itself.",
+  "version": "1.2.8",
+  "notes": "New Clear sheet button in Setup > Google Sheet. It wipes all bills from the sheet and needs the Admin PIN.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

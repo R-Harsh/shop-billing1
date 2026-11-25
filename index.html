@@ -3212,16 +3212,24 @@ setInterval(()=>{try{const c=document.querySelector('input[name=pay]:checked'),n
  window.sheetMarkSent=s=>{const sn=sent();sn[s.no]=sig(s);SS('sb-sheet-sent',JSON.stringify(sn))};
  window.addEventListener('online',kick);
  function card(){const ts=document.getElementById('t-setup');if(!ts)return;
-  ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>Google Sheet (live bill list)</b><p class="muted" id="sheetMsg" style="margin:4px 0 8px"></p><input id="sheetUrl" placeholder="Web app link from Google (starts with https://script.google.com)" autocomplete="off" autocapitalize="off"><input id="sheetSec" placeholder="Secret word (same as in the Google script)" autocomplete="off" autocapitalize="off" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" id="sheetSave">Save and send</button><button class="btn alt" id="sheetTest">Test</button><button class="btn alt" id="sheetOff">Disconnect</button></div></div>');
+  ts.insertAdjacentHTML('afterbegin','<div class="card" style="margin-bottom:10px"><b>Google Sheet (live bill list)</b><p class="muted" id="sheetMsg" style="margin:4px 0 8px"></p><input id="sheetUrl" placeholder="Web app link from Google (starts with https://script.google.com)" autocomplete="off" autocapitalize="off"><input id="sheetSec" placeholder="Secret word (same as in the Google script)" autocomplete="off" autocapitalize="off" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" id="sheetSave">Save and send</button><button class="btn alt" id="sheetTest">Test</button><button class="btn alt" id="sheetOff">Disconnect</button><button class="btn alt" id="sheetClear">Clear sheet</button></div></div>');
   const u=document.getElementById('sheetUrl'),sc=document.getElementById('sheetSec');u.value=url();sc.value=sec();
   msg(url()?'Connected. Every new, edited or cancelled bill is sent to your sheet.':'Not connected. Bills stay only in this app.');
-  if(window.claude){msg('Google Sheet works only in the installed Windows app, not on the Claude web page.');['sheetSave','sheetTest','sheetOff'].forEach(i=>{document.getElementById(i).disabled=true})}
+  if(window.claude){msg('Google Sheet works only in the installed Windows app, not on the Claude web page.');['sheetSave','sheetTest','sheetOff','sheetClear'].forEach(i=>{document.getElementById(i).disabled=true})}
   document.getElementById('sheetSave').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\//.test(v)){toast('Paste the Web app link that starts with https://script.google.com');return}
    SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());SS('sb-sheet-sent','{}');msg('Sending all bills to the sheet...');kick()};
   document.getElementById('sheetTest').onclick=async()=>{const v=u.value.trim();if(!v){toast('Paste the link first');return}
    SS('sb-sheet-url',v);SS('sb-sheet-sec',sc.value.trim());msg('Testing...');
    try{const j=await post({ping:true});msg(j&&j.ok?'Test passed. Your Google Sheet answered. Now press Save and send.':'The sheet answered but refused: '+((j&&j.error)||'unknown'))}
    catch(e){msg('Could not reach the sheet. Check the link, that access is set to Anyone, and the internet.')}};
+  document.getElementById('sheetClear').onclick=()=>{if(!url()){toast('Connect the Google Sheet first');return}
+   adminGate('Delete ALL rows from the Google Sheet? This cannot be undone. Bills in the app are not deleted.',async()=>{
+    msg('Clearing the sheet...');
+    try{const j=await post({clearAll:true});
+     if(j&&j.ok&&j.cleared===true){msg('Google Sheet cleared at '+new Date().toLocaleTimeString()+'.');toast('Google Sheet cleared')}
+     else if(j&&j.ok){msg('The sheet answered but did not clear. Update the Google script with the clear code, then deploy a new version.');toast('Google script needs the update')}
+     else{msg('The sheet refused: '+((j&&j.error)||'unknown'));toast('Sheet not cleared')}}
+    catch(e){msg('Could not reach the sheet. Check the internet and try again.');toast('Sheet not reached')}})};
   document.getElementById('sheetOff').onclick=()=>{SS('sb-sheet-url','');SS('sb-sheet-sec','');SS('sb-sheet-sent','{}');u.value='';sc.value='';msg('Not connected. Bills stay only in this app.')}}
  card();kick();
 })();
