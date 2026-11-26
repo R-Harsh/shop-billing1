@@ -1,7 +1,6 @@
 {
-  "version": "1.3.22",
-  "notes": "Clear Google Sheet and Clear database can be switched ON or OFF in Admin privileges (ON by default).",
-  "file": "https://r-harsh.github.io/shop-billing1/Shop_Billing.html",
+  "version": "1.3.23",
+  "notes": "Item list: removed the 'Put items in a category' section from the Categories screen. Use the item list to set a category.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
