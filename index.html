@@ -51,7 +51,8 @@ input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid 
 .catBar .cat{background:var(--card);color:var(--ink);border:2px solid var(--ink);border-radius:6px;padding:7px 16px;font-size:15px;font-weight:600;cursor:pointer}
 .catBar .cat:hover{border-color:var(--acc)}
 .catBar .cat.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
-.catBar .cat small{opacity:.7;font-weight:500;margin-left:4px}
+.catBar .cat.cm{border-style:dashed;font-weight:500}
+#itemTable select{width:100%;min-width:0;padding:6px 4px;font-size:14px}
 .pick .pim{display:block;width:100%;height:56px;object-fit:cover;border-radius:8px;margin-bottom:5px;background:var(--line)}
 .thm{width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--line);display:block;background:var(--bg)}
 .thm.none{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:18px}
@@ -323,9 +324,10 @@ nav button *{pointer-events:none}
   </div>
   <input id="iSearch" placeholder="Search by item name or price (example: soap or 150)" autocomplete="off" style="margin-bottom:8px">
   <div class="row sortBar" style="margin:6px 0"><span class="muted">Order:</span><button class="btn alt sm" type="button" data-sort="asc">A → Z</button><button class="btn alt sm" type="button" data-sort="desc">Z → A</button></div>
-  <datalist id="catDl"></datalist><div class="scroll"><table class="table" id="itemTable"></table></div>
+  <div class="scroll"><table class="table" id="itemTable"></table></div>
   <p class="muted" style="margin-bottom:0">Edit any cell and it saves automatically. Profit per item is customer price minus base cost. Stock turns amber when it falls to the low-stock level. Total sold is the number of pieces sold in all saved bills, cancelled bills not counted.</p>
  </div>
+ <div class="card" id="catCard" style="margin-top:12px"><div class="row" style="align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1 1 200px"><b>Categories</b> <span class="muted">for the buttons on the Bill page</span></span><button class="btn alt sm" type="button" id="catListBtn">📋 Category list</button></div><div id="catHost" style="margin-top:6px"></div></div>
  <div class="card" style="margin-top:12px"><b>Stock-in from supplier</b>
   <div class="row" style="margin:8px 0;flex-wrap:wrap"><input id="bItem" list="bItemL" autocomplete="off" placeholder="Item name (type a new name to add it to the list)" style="flex:2;min-width:180px"><datalist id="bItemL"></datalist><input id="bQty" type="number" min="1" placeholder="Qty" style="flex:1;min-width:70px"><input id="bCost" type="number" min="0" placeholder="New base cost ₹ (optional)" style="flex:1;min-width:120px"><input id="bPrice" type="number" min="0" placeholder="Selling price ₹ (new item only)" style="flex:1;min-width:120px"><button class="btn" id="bAdd">Add stock</button><button class="btn alt" id="bNew">+ New item</button></div>
   <div class="scroll" id="bList"></div></div>
@@ -627,20 +629,77 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
  const v=b.dataset.sort==='asc'?1:-1;SORT=SORT===v?0:v;try{localStorage.setItem('shopSort',SORT)}catch(x){}
  paintSort();renderPicks();if($('itemTable'))renderItems()});
 paintSort();
-/* ===== item categories: filter buttons on the bill page ===== */
-let CAT='';
+/* ===== item categories: filter buttons on the bill page + Categories manager ===== */
+let CAT='',CATOPEN='';
 try{CAT=localStorage.getItem('shopCat')||''}catch(e){}
 const catOf=i=>(i.g||'').trim();
-function catList(){const m={};S.items.forEach(i=>{const g=catOf(i);if(g){const k=g.toLowerCase();(m[k]=m[k]||{n:g,c:0}).c++}});return Object.values(m).sort((a,b)=>a.n.localeCompare(b.n,undefined,{sensitivity:'base',numeric:true}))}
+const cLow=t=>String(t==null?'':t).trim().toLowerCase();
+function catList(){const m={},L=[];
+ ((S.set&&S.set.cats)||[]).forEach(n=>{n=String(n||'').trim();if(n&&!m[cLow(n)]){m[cLow(n)]={n,c:0};L.push(m[cLow(n)])}});
+ S.items.forEach(i=>{const g=catOf(i);if(!g)return;const k=cLow(g);if(!m[k]){m[k]={n:g,c:0};L.push(m[k])}m[k].c++});
+ return L.sort((a,b)=>a.n.localeCompare(b.n,undefined,{sensitivity:'base',numeric:true}))}
 function renderCatBar(){const el=$('catBar');if(!el)return;const L=catList();
- if(!L.length){el.style.display='none';el.innerHTML='';return}
- el.style.display='';
- if(CAT&&!L.some(c=>c.n.toLowerCase()===CAT.toLowerCase()))CAT='';
- const b=(v,t,c)=>'<button type="button" class="cat'+((CAT||'').toLowerCase()===v.toLowerCase()?' on':'')+'" data-cat="'+esc(v)+'" aria-pressed="'+((CAT||'').toLowerCase()===v.toLowerCase())+'">'+esc(t)+'</button>';
+ if(CAT&&!L.some(c=>cLow(c.n)===cLow(CAT)))CAT='';
+ const b=(v,t)=>{const on=cLow(CAT)===cLow(v);return '<button type="button" class="cat'+(on?' on':'')+'" data-cat="'+esc(v)+'" aria-pressed="'+on+'">'+esc(t)+'</button>'};
  el.innerHTML=b('','All')+L.map(c=>b(c.n,c.n)).join('')}
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#catBar [data-cat]');if(!b)return;
- CAT=b.dataset.cat;try{localStorage.setItem('shopCat',CAT)}catch(x){}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#catBar button');if(!t)return;
+ if(t.dataset.cat===undefined)return;
+ CAT=t.dataset.cat;try{localStorage.setItem('shopCat',CAT)}catch(x){}
  renderPicks()});
+function catSave(){save();renderCatBar();renderPicks();if($('itemTable'))renderItems()}
+function renderCatCard(){const h=$('catHost');if(!h||(document.activeElement&&h.contains(document.activeElement)))return;catManage('','',true)}
+function catGo(){const c=$('catCard');if(!c)return;c.scrollIntoView({behavior:'smooth',block:'center'});const f=c.querySelector('#cmNew');if(f)setTimeout(()=>{try{f.focus({preventScroll:true})}catch(e){f.focus()}},350)}
+function catManage(msg,focus,inl){
+ const L=catList(),X=new Set(),host=inl?$('catHost'):$('mBody'),re=(m,f)=>catManage(m,f,inl);
+ if(!host)return;
+  const row=(c,n)=>{const op=cLow(CATOPEN)===cLow(c.n);
+  const mem=op?S.items.map((it,x)=>({it,x})).filter(o=>cLow(catOf(o.it))===cLow(c.n)).sort((a,b)=>a.it.n.localeCompare(b.it.n,undefined,{sensitivity:'base',numeric:true})):[];
+  return '<div class="row" style="gap:6px;margin:6px 0;align-items:center;flex-wrap:wrap"><input value="'+esc(c.n)+'" data-cn="'+n+'" maxlength="30" style="flex:1 1 150px;min-width:0"><span class="muted" style="white-space:nowrap">'+c.c+' items</span><button class="btn alt sm" type="button" data-catview="'+n+'">'+(op?'Hide items':'Items')+'</button><button class="btn alt sm" type="button" data-catren="'+n+'">Rename</button><button class="btn alt sm" type="button" data-catdel="'+n+'">Delete</button></div>'
+  +(op?'<div style="margin:0 0 8px 6px;padding:4px 10px;border-left:3px solid var(--gold)">'+(mem.length?mem.map(o=>'<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px dashed var(--line)"><span style="flex:1 1 130px;min-width:0">'+esc(o.it.n)+'</span><select data-catmv="'+o.x+'" aria-label="Move to" style="width:auto;flex:0 1 170px;min-width:0"><option value="" selected disabled>Move to…</option>'+L.filter(k=>cLow(k.n)!==cLow(c.n)).map(k=>'<option value="'+esc(k.n)+'">'+esc(k.n)+'</option>').join('')+'</select><button class="btn alt sm" type="button" data-catrm="'+o.x+'">Remove</button></div>').join(''):'<p class="muted" style="margin:6px 0">No items in this category yet.</p>')+'</div>':'')};
+ host.innerHTML=(inl?'':'<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:19px">Categories</b><button class="btn alt sm" type="button" id="cmX">Close</button></div>')
+ +(msg?'<p style="margin:6px 0;color:var(--ok);font-weight:600">'+esc(msg)+'</p>':'')
+ +'<div class="row" style="margin:10px 0;gap:8px"><input id="cmNew" maxlength="30" placeholder="New category name (example: Rockets)" autocomplete="off" style="flex:1;min-width:0"><button class="btn" type="button" id="cmAdd">Add</button></div>'
+ +(L.length?L.map(row).join(''):'<p class="muted">No category yet. Type a name above and press Add.</p>')
+ +(L.length&&S.items.length?'<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px"><b>Put items in a category</b><div class="row" style="gap:8px;margin:8px 0"><select id="cmTo" style="flex:1;min-width:0">'+L.map(c=>'<option value="'+esc(c.n)+'">'+esc(c.n)+'</option>').join('')+'<option value="">(No category)</option></select><input id="cmQ" placeholder="Search item" autocomplete="off" style="flex:1;min-width:0"></div><div id="cmList" style="max-height:28vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 8px"></div><div class="row" style="margin-top:8px;align-items:center;gap:8px"><button class="btn" type="button" id="cmMove">Move ticked items</button><span class="muted" id="cmCnt"></span></div></div>':'');
+ if(!inl){$('modal').style.display='flex';$('mBody').style.maxWidth='560px'}
+ const mb=host,q=sel=>mb.querySelector(sel);
+ if(q('#cmX'))q('#cmX').onclick=closeBill;
+ const add=()=>{const v=q('#cmNew').value.trim().replace(/\s+/g,' ');if(!v){q('#cmNew').focus();return}
+  if(L.some(c=>cLow(c.n)===cLow(v))){re('"'+v+'" is already there','cmNew');return}
+  S.set.cats=L.map(c=>c.n).concat([v]);catSave();re('Added "'+v+'"','cmNew')};
+ q('#cmAdd').onclick=add;q('#cmNew').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();add()}};
+ mb.querySelectorAll('[data-catren]').forEach(b=>b.onclick=()=>{const n=+b.dataset.catren,old=L[n].n,v=q('[data-cn="'+n+'"]').value.trim().replace(/\s+/g,' ');
+  if(!v||v===old)return;
+  if(L.some((c,k)=>k!==n&&cLow(c.n)===cLow(v))){re('Name "'+v+'" is already used');return}
+  S.items.forEach(i=>{if(cLow(catOf(i))===cLow(old))i.g=v});
+  S.set.cats=L.map((c,k)=>k===n?v:c.n);
+  if(cLow(CAT)===cLow(old)){CAT=v;try{localStorage.setItem('shopCat',CAT)}catch(x){}}
+  if(cLow(CATOPEN)===cLow(old))CATOPEN=v;
+  catSave();re('Renamed to "'+v+'"')});
+ mb.querySelectorAll('[data-catview]').forEach(b=>b.onclick=()=>{const n=+b.dataset.catview,nm=L[n].n;CATOPEN=cLow(CATOPEN)===cLow(nm)?'':nm;re('',focus)});
+ mb.querySelectorAll('[data-catmv]').forEach(sel=>sel.onchange=()=>{const it=S.items[+sel.dataset.catmv];if(!it||!sel.value)return;const to=sel.value;it.g=to;catSave();re('Moved "'+it.n+'" to "'+to+'"')});
+ mb.querySelectorAll('[data-catrm]').forEach(b=>b.onclick=()=>{const it=S.items[+b.dataset.catrm];if(!it)return;const from=catOf(it);delete it.g;catSave();re('Removed "'+it.n+'" from "'+from+'"')});
+ mb.querySelectorAll('[data-catdel]').forEach(b=>b.onclick=()=>{const n=+b.dataset.catdel,c=L[n];
+  ask('Delete category "'+c.n+'"? '+(c.c?c.c+' item(s) will have no category. ':'')+'No item is deleted.','Delete',()=>{
+   S.items.forEach(i=>{if(cLow(catOf(i))===cLow(c.n))delete i.g});
+   S.set.cats=L.filter((x,k)=>k!==n).map(x=>x.n);catSave();re('Deleted "'+c.n+'"')})});
+ const lst=q('#cmList');
+ if(lst){const paint=()=>{const f=cLow(q('#cmQ').value);
+   lst.innerHTML=S.items.map((it,x)=>({it,x})).filter(o=>!f||cLow(o.it.n).includes(f)).sort((a,b)=>a.it.n.localeCompare(b.it.n,undefined,{sensitivity:'base',numeric:true})).map(o=>'<label style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line);cursor:pointer"><input type="checkbox" data-x="'+o.x+'"'+(X.has(o.x)?' checked':'')+' style="width:auto;flex:none"><span style="flex:1;min-width:0">'+esc(o.it.n)+'</span><small class="muted">'+esc(catOf(o.it)||'no category')+'</small></label>').join('')||'<p class="muted">No item found</p>';
+   q('#cmCnt').textContent=X.size?X.size+' ticked':''};
+  lst.onchange=e=>{const t=e.target;if(t.dataset.x===undefined)return;t.checked?X.add(+t.dataset.x):X.delete(+t.dataset.x);q('#cmCnt').textContent=X.size?X.size+' ticked':''};
+  q('#cmQ').oninput=paint;paint();
+  q('#cmMove').onclick=()=>{if(!X.size){toast('Tick the items first');return}const to=q('#cmTo').value,k=X.size;
+   X.forEach(x=>{const it=S.items[x];if(!it)return;if(to)it.g=to;else delete it.g});
+   catSave();re('Moved '+k+' item(s)'+(to?' to "'+to+'"':' out of their category'))}}
+ if(focus){const f=q('#'+focus);if(f)f.focus()}}
+function catListView(){
+ const L=catList(),none=S.items.filter(i=>!catOf(i)).sort((a,b)=>a.n.localeCompare(b.n,undefined,{sensitivity:'base',numeric:true}));
+ const grp=(t,arr,dim)=>'<div style="margin:12px 0 4px"><b'+(dim?' style="color:var(--mute)"':'')+'>'+esc(t)+'</b> <span class="muted">('+arr.length+' item'+(arr.length===1?'':'s')+')</span></div>'+(arr.length?arr.map(i=>'<div class="row" style="justify-content:space-between;gap:8px;padding:4px 0 4px 10px;border-bottom:1px dashed var(--line)"><span style="min-width:0;overflow-wrap:anywhere">'+esc(i.n)+'</span><span class="muted" style="white-space:nowrap">'+money(i.p)+'</span></div>').join(''):'<div class="muted" style="padding:4px 0 4px 10px">No items</div>');
+ $('mBody').innerHTML='<div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:19px">Category list</b><button class="btn alt sm" type="button" id="clX">Close</button></div><p class="muted" style="margin:4px 0 0">Which item is in which category</p>'
+  +(L.length||none.length?L.map(c=>grp(c.n,S.items.filter(i=>cLow(catOf(i))===cLow(c.n)).sort((a,b)=>a.n.localeCompare(b.n,undefined,{sensitivity:'base',numeric:true})))).join('')+(L.length&&none.length?grp('No category',none,1):none.length&&!L.length?grp('No category',none,1):''):'<p class="muted">No items yet.</p>');
+ $('mBody').style.maxWidth='560px';$('modal').style.display='flex';$('clX').onclick=closeBill}
+$('catListBtn').onclick=catListView;
 /* billing */
 function renderPicks(){
  renderCatBar();
@@ -2292,12 +2351,12 @@ function itemView(){
  if(SORT)R.sort((a,b)=>SORT*a[0].n.localeCompare(b[0].n,undefined,{sensitivity:'base'}));
  return R}
 function renderItems(){
- {const dl=$('catDl');if(dl)dl.innerHTML=catList().map(c=>'<option value="'+esc(c.n)+'">').join('')}
+ const CL=catList();
  const SOLD={};S.sales.forEach(s=>{if(s.void)return;s.lines.forEach(l=>{SOLD[l.c]=(SOLD[l.c]||0)+(+l.q||0)})});
  const cg='<colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:11%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:6%"><col style="width:6%"><col style="width:10%"></colgroup>';
  $('itemTable').innerHTML=cg+'<tr><th>Sr no.</th><th>Photo</th><th>Name</th><th>Category</th><th>Barcode</th><th>Base cost ₹</th><th>Customer price ₹</th><th>Profit per item</th><th>Stock</th><th title="All saved bills. Cancelled bills are not counted">Total sold</th><th></th></tr>'+
  itemView().map(([i,x],n)=>{const ed=IEDIT.has(i.c),lk=ed?'':' readonly tabindex="-1"';return `<tr><td style="font-weight:700">${n+1}</td><td><div class="row" style="flex-wrap:wrap;gap:4px">${i.img?'<img class="thm" alt="" src="'+i.img+'">':'<span class="thm none">📷</span>'}<span><button class="btn alt sm" data-ph="${x}">${i.img?'Change':'Add photo'}</button>${i.img?'<br><button class="rm" data-phx="'+x+'" style="font-size:13px">Remove</button>':''}</span></div></td><td><input value="${esc(i.n)}" data-x="${x}" data-f="n"${lk}></td>
- <td><input value="${esc(i.g||'')}" data-x="${x}" data-f="g" list="catDl" placeholder="${ed?'e.g. Rockets':''}"${lk}></td>
+ <td class="${i.g?'catLk':''}"><select data-x="${x}" data-f="g" aria-label="Category"${i.g?' tabindex="-1" title="Double-click to change category"':''}><option value="">—</option>${CL.map(c=>'<option value="'+esc(c.n)+'"'+(cLow(c.n)===cLow(i.g)?' selected':'')+'>'+esc(c.n)+'</option>').join('')}<option value="__new">＋ Add / edit categories…</option></select></td>
  <td><input value="${esc(i.bc||'')}" data-x="${x}" data-f="bc" placeholder="${ed?'Scan or type':''}" inputmode="numeric"${lk}></td>
  <td><input type="number" value="${i.k}" data-x="${x}" data-f="k"${lk}></td>
  <td><input type="number" value="${i.p}" data-x="${x}" data-f="p"${lk}></td>
@@ -2305,12 +2364,13 @@ function renderItems(){
  <td><input type="number" value="${i.s}" data-x="${x}" data-f="s"${lk} style="${i.s<=S.set.low?'color:var(--warn);'+(ed?'border-color:var(--warn)':''):''}"></td>
  <td style="font-weight:700">${SOLD[i.c]||0}</td>
  <td class="ibtn">${ed?'<button class="btn sm" data-ed="'+esc(i.c)+'">Done</button>':'<button class="btn alt sm" data-opt="'+esc(i.c)+'">Actions ▾</button>'}</td></tr>`}).join('')||'<tr><td colspan="11" class="muted">No item found</td></tr>';
+ renderCatCard();
 }
 $('itemTable').onmousedown=e=>{if(e.target.closest('[data-ed]'))e.preventDefault()};
 $('itemTable').onchange=e=>{const t=e.target;if(t.dataset.x===undefined)return;const it=S.items[t.dataset.x],f=t.dataset.f;let warn='';
  if(f==='c'){const v=t.value.trim();if(!v||S.items.some((o,k)=>o.c===v&&k!=t.dataset.x)){toast('Code must be unique');t.value=it.c;return}it.c=v}
  else if(f==='bc'){const v=t.value.trim();if(v&&S.items.some((o,k)=>k!=t.dataset.x&&(o.bc===v||o.c===v))){toast('This barcode is already used by another item');t.value=it.bc||'';return}if(v)it.bc=v;else delete it.bc}
- else if(f==='g'){const v=t.value.trim().replace(/\s+/g,' ');if(v){const ex=S.items.find(o=>catOf(o).toLowerCase()===v.toLowerCase());it.g=ex?catOf(ex):v}else delete it.g}
+ else if(f==='g'){if(t.value==='__new'){renderItems();catGo();return}if(t.value)it.g=t.value;else delete it.g}
  else if(f==='n')it.n=t.value.trim()||it.n;else{const nv=Math.max(0,parseFloat(t.value)||0),ov=it[f];it[f]=nv;
   if(f==='p'&&nv!==ov){(it.ph=it.ph||[]).push({t:Date.now(),o:ov,n:nv});if(it.ph.length>50)it.ph.shift()}
   if((f==='p'||f==='k')&&nv!==ov&&it.p>0&&it.p<it.k)warn='Warning: "'+it.n+'" is priced at '+money(it.p)+', below its cost of '+money(it.k)+'. You lose '+money(it.k-it.p)+' on each one.'}
@@ -2371,6 +2431,20 @@ function itemOptions(c){const x=S.items.findIndex(o=>o.c===c),it=S.items[x];if(!
  $('ioEdit').onclick=()=>{closeBill();IEDIT.add(c);renderItems()};
  $('ioHist').onclick=()=>showPriceHistory(x);
  $('ioDel').onclick=()=>{closeBill();guard('delItem','Delete "'+it.n+'" from the item list? Past bills are not affected.','Delete item',()=>{const k=S.items.findIndex(o=>o.c===c);if(k<0)return;S.items.splice(k,1);cart=cart.filter(l=>l.c!==c);save();renderItems();renderCart();toast('Item deleted')})}}
+/* category lock: once chosen, double-click (or double-tap) + confirm is needed to change it */
+(function(){const st=document.createElement('style');st.textContent='#itemTable td.catLk select{pointer-events:none;cursor:pointer}#itemTable td.catLk{cursor:pointer}';document.head.appendChild(st);
+let lt=0,lx=null;
+$('itemTable').addEventListener('click',e=>{const td=e.target.closest('td.catLk');if(!td)return;const sel=td.querySelector('select');if(!sel)return;
+ const now=Date.now(),x=sel.dataset.x;
+ if(lx===x&&now-lt<450){lt=0;lx=null;
+  ask('Are you sure you want to change the category?','Yes, change',()=>{
+   const t=$('itemTable').querySelector('select[data-f="g"][data-x="'+x+'"]');if(!t)return;
+   const c=t.closest('td');c.classList.remove('catLk');t.tabIndex=0;t.focus();
+   try{t.showPicker&&t.showPicker()}catch(_){}
+   t.addEventListener('blur',()=>{if(t.value&&document.body.contains(c))setTimeout(()=>{if(document.activeElement!==t)c.classList.add('catLk')},200)},{once:true});
+  });
+ }else{lt=now;lx=x}
+},true);})();
 $('itemTable').onclick=e=>{const ob=e.target.closest('[data-opt]');if(ob){itemOptions(ob.dataset.opt);return}
  const eb=e.target.closest('[data-ed]');if(eb){const c=eb.dataset.ed,a=document.activeElement;if(a&&a.closest&&a.closest('#itemTable')&&a.blur)a.blur();if(IEDIT.has(c)){IEDIT.delete(c);toast('Saved and locked')}else IEDIT.add(c);renderItems();return}
  const hb=e.target.closest('[data-hist]');if(hb){showPriceHistory(+hb.dataset.hist);return}
@@ -4270,7 +4344,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.12';                                   /* change this on every release */
+ const APP_VERSION='1.3.19';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
