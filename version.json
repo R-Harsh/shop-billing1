@@ -1,6 +1,6 @@
 {
-  "version": "1.3.10",
-  "notes": "Close day now stops if the current bill on the Bill page is not saved.\nSave or clear the bill first, then close the day.",
+  "version": "1.3.11",
+  "notes": "Admin panel: 16 new ON/OFF switches (discount, print, WhatsApp, add/edit item, stock-in, stock-out, receive payment, old balance, expenses, Cash Book, cancelled bills, PDF, backup). New buttons: All tabs ON, All actions ON, All actions OFF.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
