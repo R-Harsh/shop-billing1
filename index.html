@@ -3233,7 +3233,8 @@ const PACTS=[
 ['pdf','Save report as PDF','Admin PIN for Day report and Staff report PDF','Reports and data'],
 ['backup','Save backup file','Admin PIN to download a backup file','Reports and data']
 ];
-const PDEF={cancel:true,delItem:false,editBill:false,reset:true};
+PACTS.splice(4,0,['clearSheet','Clear Google Sheet','Needs Admin PIN to clear all bill rows from the Google Sheet (Setup > Data & Sync)','Protect bills and data'],['clearDb','Clear database','Needs Admin PIN to clear the cloud database (Setup > Data & Sync)','Protect bills and data']);
+const PDEF={cancel:true,delItem:false,editBill:false,reset:true,clearSheet:true,clearDb:true};
 function privO(){S.set.priv=S.set.priv||{};S.set.priv.tabs=S.set.priv.tabs||{};S.set.priv.act=S.set.priv.act||{};return S.set.priv}
 function tabNeedsAdmin(t){const p=(S.set||{}).priv;return !!(p&&p.tabs&&p.tabs[t])}
 function actNeedsAdmin(k){const p=(S.set||{}).priv;return p&&p.act&&k in p.act?!!p.act[k]:!!PDEF[k]}
@@ -3632,6 +3633,57 @@ function openResetMenu(){
  $('modal').style.display='flex';$('rmClose').onclick=closeBill;
  $('rmList').onclick=e=>{const b=e.target.closest('button[data-rs]');if(b)resetStart(b.dataset.rs)}}
 $('reset').onclick=openResetMenu;
+/* ===== Data & Sync: separate "Clear Google Sheet" and "Clear database" buttons ===== */
+(function(){
+ const LSX=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
+ const gate=(k,t,fn)=>{if(actNeedsAdmin(k))adminGate(t,fn);else fn()}; /* Admin PIN asked when the switch is ON in Admin privileges (default ON) */
+ const TRKX=(a,b,c)=>{try{if(typeof trk==='function')trk(a,b,c)}catch(e){}};
+ const SCRIPT_FIX="// In your Google script, inside doPost(e), right AFTER the secret-word check, add:\nvar d = JSON.parse(e.postData.contents);\nif (d.clear) {\n  SpreadsheetApp.getActiveSpreadsheet().getSheets().forEach(function (sh) {\n    var last = sh.getLastRow();\n    if (last > 1) sh.deleteRows(2, last - 1);   // keeps the heading row\n  });\n  return ContentService.createTextOutput(JSON.stringify({ok: true, cleared: true}))\n    .setMimeType(ContentService.MimeType.JSON);\n}\n// Then Deploy > Manage deployments > Edit > New version > Deploy.";
+ function sheetNeedsScript(){
+  $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Your Google script cannot clear yet</b></p><p>The sheet answered, but it did not clear. Add this small piece to your Google script, deploy a New version, then press Clear Google Sheet again.</p><textarea id="csCode" readonly style="width:100%;height:210px;font:12px/1.4 monospace"></textarea><div class="row" style="margin-top:8px"><button class="btn" id="csCopy">Copy code</button><button class="btn alt" id="csX">Close</button></div>';
+  $('csCode').value=SCRIPT_FIX;$('modal').style.display='flex';$('csX').onclick=closeBill;
+  $('csCopy').onclick=async()=>{try{await navigator.clipboard.writeText(SCRIPT_FIX);toast('Code copied')}catch(e){$('csCode').select();toast('Select and copy the code')}}}
+ async function doClearSheet(){
+  const gu=LSX('sb-sheet-url'),sc=LSX('sb-sheet-sec');
+  toast('Clearing Google Sheet...');
+  try{
+   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),25000);
+   const r=await fetch(gu,{method:'POST',body:JSON.stringify({secret:sc,clear:true}),signal:ac.signal});clearTimeout(tm);
+   const j=await r.json();
+   if(!j||!j.ok){toast('The sheet refused: '+((j&&j.error)||'check the secret word'));TRKX('bad','Clear Google Sheet failed','sheet');return}
+   if(!j.cleared){sheetNeedsScript();return}
+   try{if(typeof sheetMarkSent==='function')S.sales.forEach(x=>sheetMarkSent(x))}catch(e){}
+   TRKX('ok','Google Sheet cleared','sheet');toast('Google Sheet cleared');
+   try{const m=document.getElementById('sheetMsg');if(m)m.textContent='Sheet cleared at '+new Date().toLocaleTimeString()+'. Only new or edited bills will be sent from now on.'}catch(e){}
+  }catch(e){toast('Could not reach the sheet. Check the internet and try again.');TRKX('bad','Clear Google Sheet: not reached','sheet')}}
+ function askClearSheet(){
+  if(window.claude){toast('Google Sheet works only in the installed Windows app');return}
+  if(!LSX('sb-sheet-url')){toast('Google Sheet is not connected. Connect it first.');return}
+  gate('clearSheet','Clear Google Sheet',()=>{
+   $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Clear the Google Sheet?</b></p><p>All bill rows in your Google Sheet will be deleted (headings stay). Bills inside this app are not touched.</p><p class="muted">This cannot be undone.</p><div class="row" style="flex-wrap:wrap"><button class="btn" id="csGo">Clear sheet now</button><button class="btn alt" id="csNo">Cancel</button></div>';
+   $('modal').style.display='flex';$('csNo').onclick=closeBill;$('csGo').onclick=()=>{closeBill();doClearSheet()}})}
+ async function doClearDb(){
+  try{abSafety()}catch(e){}
+  if(EDITNO)cancelEdit();
+  const pv=S.set.priv,lg=S.set.lockGen||0;S=JSON.parse(JSON.stringify(DEF));if(pv)S.set.priv=pv;S.set.lockGen=lg+1;
+  try{if(SYNC.db)SYNC.db.collection('log').add({t:Date.now(),by:SYNC.who||'?',x:'Database cleared'}).catch(()=>{})}catch(e){}
+  save();cart=[];$('disc').value='';$('paid').value='';$('cust').value='';$('phone').value='';
+  head();renderCart();renderPicks();renderHeld();refresh();loadSetup();backupUi();
+  toast('Clearing database...');
+  for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,1000));try{if(typeof unsynced==='function'&&unsynced().total===0){toast('Database cleared');TRKX('ok','Database cleared','db');return}}catch(e){}}
+  toast('Deleted here. The database will finish clearing when the internet is back.')}
+ function askClearDb(){
+  if(!(SYNC.ready&&SYNC.db)){toast('Database is not connected. Add your shop code first.');return}
+  if(!navigator.onLine){toast('No internet. Try again when it is back.');return}
+  gate('clearDb','Clear database',()=>{
+   $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Clear the database?</b></p><p>All items, bills, customers, expenses, cash entries and settings will be removed from the cloud database, and from every device using this shop code. This device is cleared too. The Google Sheet is not touched.</p><p class="muted">This cannot be undone. Save a backup first if you may need this data.</p><div class="row" style="flex-wrap:wrap"><button class="btn alt" id="cdBk">Save backup first</button><button class="btn" id="cdGo">Clear database now</button><button class="btn alt" id="cdNo">Cancel</button></div>';
+   $('modal').style.display='flex';$('cdNo').onclick=closeBill;
+   $('cdBk').onclick=async()=>{const ok=await saveFile('billing-backup-'+dk(new Date())+'.json',JSON.stringify(S),'application/json');if(ok){S.lastBk=Date.now();save();backupUi();toast('Backup saved. Now press Clear database now')}};
+   $('cdGo').onclick=()=>{closeBill();doClearDb()}})}
+ const ts=document.getElementById('t-setup');
+ if(ts){ts.insertAdjacentHTML('afterbegin','<div class="card" id="clrCard" style="margin-bottom:10px"><b>Clear cloud data</b><p class="muted" style="margin:4px 0 8px">Two separate buttons. Use them only when you want to start fresh. Save a backup first.</p><div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn alt" id="clrSheet" style="color:var(--acc)">Clear Google Sheet</button><button class="btn alt" id="clrDb" style="color:var(--acc)">Clear database</button></div></div>');
+  document.getElementById('clrSheet').onclick=askClearSheet;document.getElementById('clrDb').onclick=askClearDb}
+})();
 /* ===== Live Sync tab ===== */
 (function(){
  const nm={items:'item',sales:'bill',exp:'expense',pays:'payment',buys:'stock-in'};
@@ -4344,7 +4396,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.19';                                   /* change this on every release */
+ const APP_VERSION='1.3.22';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4650,7 +4702,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 const ts=document.getElementById('t-setup');if(!ts)return;
 const CATS=[['shop','🏪','Shop'],['offers','🏷️','Offers'],['display','✨','Display & Goals'],['users','👥','Users & PIN'],['data','☁️','Data & Sync'],['notes','📝','Notes'],['danger','⚠️','Danger zone']];
 /* which card goes where (first matching selector decides order inside a category) */
-const MAP={danger:['#stDanger'],users:['#stPin','#usersCard'],display:['#goalCard','#exCard'],offers:['#dpCard','#cpCard','#sumCard'],notes:['#notesBox'],data:['#updCard','#bkSave','#abCard','#sheetUrl','#syncCode','#aboutMode'],shop:['#sName']};
+const MAP={danger:['#stDanger'],users:['#stPin','#usersCard'],display:['#goalCard','#exCard'],offers:['#dpCard','#cpCard','#sumCard'],notes:['#notesBox'],data:['#updCard','#bkSave','#abCard','#sheetUrl','#syncCode','#clrCard','#aboutMode'],shop:['#sName']};
 const wrap=document.createElement('div');wrap.id='stWrap';
 wrap.innerHTML='<div id="stNav"><input id="stQ" type="search" placeholder="Search settings…" aria-label="Search settings" autocomplete="off"><div id="stTabs">'
  +CATS.map(c=>'<button type="button" data-c="'+c[0]+'"><span>'+c[1]+'</span>'+c[2]+'</button>').join('')
