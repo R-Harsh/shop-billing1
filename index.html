@@ -3905,13 +3905,12 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
   db.collection('log').orderBy('t','desc').limit(100).onSnapshot(s=>{SYNC.log=s.docs.map(x=>x.data());if($('t-log').classList.contains('on'))renderLog()},er)}catch(e){if(!authed&&!SYNC.ready&&!GATE.on)start()}})();
 </script>
 <script>
-/* ===== extras: sales charts, staff sales report, low-stock reorder list ===== */
+/* ===== extras: sales charts, staff sales report ===== */
 (function(){
- const X={days:14,staff:'7',fill:''};
- const sc=$('t-season'),it=$('t-items');
- if(!sc||!it)return;
+ const X={days:14,staff:'7'};
+ const sc=$('t-season');
+ if(!sc)return;
  sc.insertAdjacentHTML('beforeend','<div class="card" id="xChart" style="margin-top:12px"></div><div class="card" id="xStaff" style="margin-top:12px"></div>');
- it.insertAdjacentHTML('beforeend','<div class="card" id="xReorder" style="margin-top:12px"></div>');
  const short=v=>v>=100000?(v/100000).toFixed(1)+'L':v>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));
  const opt=(v,t,cur)=>'<option value="'+v+'"'+(String(cur)===String(v)?' selected':'')+'>'+t+'</option>';
  function xChartUi(){
@@ -3950,24 +3949,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
    '<p class="muted" style="margin:6px 0">Sales made by each user (cancelled bills are not counted). Profit is after item cost, before expenses.</p>'+
    (rows.length?'<div class="scroll"><table class="table"><tr><th>User</th><th class="r">Bills</th><th class="r">Sales</th><th class="r">Cash</th><th class="r">UPI</th><th class="r">Pay later</th><th class="r">Profit</th></tr>'+
     rows.map(([w,o])=>'<tr><td><b>'+esc(w)+'</b></td><td class="r">'+o.n+'</td><td class="r">'+money(o.total)+'</td><td class="r">'+money(o.cash)+'</td><td class="r">'+money(o.upi)+'</td><td class="r">'+money(o.later)+'</td><td class="r"><b style="color:'+(o.profit>=0?'var(--ok)':'var(--acc)')+'">'+money(o.profit)+'</b></td></tr>').join('')+'</table></div>':'<p class="muted">No bills in this period.</p>')}
- function xReBody(){
-  const b=$('xReBody');if(!b)return;
-  const low=+(S.set&&S.set.low)||0,target=parseInt(X.fill)||Math.max(low*2,10);
-  const L=S.items.filter(i=>i.s<=low).sort((a,b)=>a.s-b.s||a.n.localeCompare(b.n)).map(i=>({n:i.n,s:i.s,buy:Math.max(1,target-i.s),k:i.k||0}));
-  X.list=L;const est=L.reduce((a,x)=>a+x.buy*x.k,0);
-  b.innerHTML=L.length?'<div class="scroll"><table class="table"><tr><th>Item</th><th class="r">In stock</th><th class="r">Buy</th><th class="r">Est. cost</th></tr>'+L.map(x=>'<tr><td>'+esc(x.n)+'</td><td class="r" style="color:'+(x.s<=0?'var(--acc)':'var(--warn)')+';font-weight:700">'+x.s+'</td><td class="r"><b>'+x.buy+'</b></td><td class="r">'+money(x.buy*x.k)+'</td></tr>').join('')+'</table></div><p style="margin:8px 0 0">Estimated cost of all: <b>'+money(est)+'</b> <span class="muted">(at base cost)</span></p><div class="row" style="margin-top:8px"><button class="btn alt" id="xReWa" type="button">Send list on WhatsApp</button></div>':'<p class="muted">All items have enough stock. Items at or below the low-stock level ('+low+') appear here.</p>'}
- function xReUi(){
-  const c=$('xReorder');if(!c)return;
-  const low=+(S.set&&S.set.low)||0;
-  c.innerHTML='<b style="font-size:18px">🛒 Low-stock reorder list</b><p class="muted" style="margin:6px 0">Items at or below the low-stock level. The Buy column brings each item up to the level you type below.</p><label class="row" style="flex-wrap:wrap;gap:8px"><span>Fill up to</span><input id="xFill" type="number" min="1" inputmode="numeric" style="width:100px" value="'+esc(X.fill)+'" placeholder="'+Math.max(low*2,10)+'"><span class="muted">pieces per item</span></label><div id="xReBody" style="margin-top:8px"></div>';
-  xReBody()}
  $('xChart').onchange=e=>{if(e.target.id==='xDays'){X.days=+e.target.value||14;xChartUi()}};
  $('xStaff').onchange=e=>{if(e.target.id==='xStaffR'){X.staff=e.target.value;xStaffUi()}};
- $('xReorder').oninput=e=>{if(e.target.id==='xFill'){X.fill=e.target.value;xReBody()}};
- $('xReorder').onclick=e=>{if(e.target.id!=='xReWa')return;const L=X.list||[];if(!L.length)return;
-  openUrl('https://wa.me/?text='+encodeURIComponent('Reorder list ('+S.set.name+'):\n'+L.map(x=>'- '+x.n+': buy '+x.buy+' (have '+x.s+')').join('\n')))};
  const _rsX=renderSeason;renderSeason=function(){_rsX();xChartUi();xStaffUi()};
- const _riX=renderItems;renderItems=function(){_riX();xReUi()};
 })();
 </script>
 <script>
@@ -4210,7 +4194,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.7';                                   /* change this on every release */
+ const APP_VERSION='1.3.8';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4391,8 +4375,9 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
  async function run(info,rb){
   if(rb&&!LAUNCH){modal({icon:'ℹ️',title:'Available in the installed app',body:'Going back works in the Windows app installed with the installer.',buttons:[{t:'OK',p:1}]});return}
   if(!HTTP&&!LAUNCH){
-   if(info.url)window.open(info.url,'_blank');
-   modal({icon:'ℹ️',title:'Install from the Desktop app',body:'This copy cannot update itself. Please install Shop Billing with the installer from your software provider.',buttons:[{t:'OK',p:1}]});
+   const u=info.url||'https://r-harsh.github.io/shop-billing1/';
+   modal({icon:'ℹ️',title:'Open the online version to update',body:'You opened Shop Billing as a file from this computer, so it cannot update itself here. Tap “Open latest version” to use the always-updated online copy, or start the app from the Desktop installer shortcut.',
+    buttons:[{t:'Close'},{t:'Open latest version',p:1,fn:()=>{if(!window.open(u,'_blank'))location.href=u}}]});
    return;
   }
   if(running)return;running=true;
@@ -4546,6 +4531,63 @@ let c0='shop';try{c0=localStorage.getItem('st-cat')||'shop'}catch(e){}
 if(!MAP[c0])c0='shop';pick(c0);sort();
 /* cards added later by other scripts (Sheet, Sync, Update, Users) are filed automatically */
 new MutationObserver(sort).observe(ts,{childList:true});
+})();
+</script>
+<script>
+/* ===== extras: leftover stock report + clearance discount suggestion (Items & stock tab) ===== */
+(function(){
+ const it=$('t-items');if(!it)return;
+ const LO={sea:'',max:40,list:[],tot:null};
+ it.insertAdjacentHTML('beforeend','<div class="card" id="xLeft" style="margin-top:12px"></div>');
+ const opt=(v,t,cur)=>'<option value="'+v+'"'+(String(cur)===String(v)?' selected':'')+'>'+t+'</option>';
+ const seasons=()=>((S.set||{}).seasons||[]).slice().sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:0);
+ function loCalc(){
+  const se=seasons().find(x=>x.id===LO.sea)||null,sold={};let allSold=0;
+  S.sales.forEach(s=>{if(s.void)return;const k=dk(s.t);if(se&&(k<se.f||k>se.t))return;
+   s.lines.forEach(l=>{const q=+l.q||0;sold[l.c]=(sold[l.c]||0)+q;allSold+=q})});
+  const mx=Math.max(0,Math.min(100,+LO.max||0));
+  const rows=S.items.filter(i=>i.s>0).map(i=>{
+   const so=sold[i.c]||0,st=so/(so+i.s);
+   let d=st>=.75?0:Math.min(mx,Math.round(mx*(1-st)/5)*5);
+   const lim=i.p>0?Math.max(0,Math.floor((i.p-i.k)/i.p*100)):0,dd=Math.min(d,lim),cp=Math.round(i.p*(1-dd/100));
+   return{n:i.n,s:i.s,so,st,cost:i.s*i.k,val:i.s*i.p,d:dd,capped:dd<d,cp,back:i.s*cp}});
+  rows.sort((a,b)=>b.cost-a.cost||a.n.localeCompare(b.n));
+  const sum=f=>rows.reduce((a,r)=>a+f(r),0),left=sum(r=>r.s);
+  LO.list=rows;
+  LO.tot={items:rows.length,left,cost:sum(r=>r.cost),val:sum(r=>r.val),back:sum(r=>r.back),sold:allSold,st:allSold+left?Math.round(allSold/(allSold+left)*100):0,se};
+  return LO}
+ const tag=r=>r.so===0?['Not sold at all','var(--acc)']:r.st<.25?['Selling slowly','var(--warn)']:r.st<.5?['Half sold','var(--warn)']:r.st<.75?['Selling fine','var(--mute)']:['Sold well','var(--ok)'];
+ function loBody(){
+  const b=$('xLoBody');if(!b)return;loCalc();const T=LO.tot,L=LO.list;
+  const st=(a,v,cls)=>'<div class="stat'+(cls?' '+cls:'')+'"><span class="muted">'+a+'</span><b>'+v+'</b></div>';
+  if(!L.length){b.innerHTML='<p class="muted">No item has stock left. Nothing to show.</p>';return}
+  b.innerHTML='<div class="stats" style="margin:8px 0">'+st('Items with stock left',T.items)+st('Pieces left',T.left)+st('Value at cost (money stuck)',money(T.cost),'cm-pend')+st('Value at selling price',money(T.val))+st('Sold so far',T.sold+' pcs ('+T.st+'%)')+'</div>'+
+   '<div class="scroll"><table class="table"><tr><th>Item</th><th class="r">Left</th><th class="r">Sold</th><th class="r">Sold %</th><th class="r">Value at cost</th><th class="r">Clearance</th><th class="r">Clearance price</th></tr>'+
+   L.map(r=>{const t=tag(r);return '<tr><td>'+esc(r.n)+'<br><small style="color:'+t[1]+';font-weight:600">'+t[0]+'</small></td><td class="r">'+r.s+'</td><td class="r">'+r.so+'</td><td class="r">'+Math.round(r.st*100)+'%</td><td class="r">'+money(r.cost)+'</td><td class="r">'+(r.d?'<b>'+r.d+'% off</b>':'<span class="muted">none</span>')+(r.capped?'<br><small class="muted">kept above cost</small>':'')+'</td><td class="r">'+(r.d?'<b>'+money(r.cp)+'</b>':'-')+'</td></tr>'}).join('')+'</table></div>'+
+   '<p style="margin:8px 0 0">If all leftover pieces sell at the clearance prices you get back <b>'+money(T.back)+'</b>, against <b>'+money(T.cost)+'</b> that you paid. '+(T.back>=T.cost?'You cover your cost.':'You still lose <b style="color:var(--acc)">'+money(T.cost-T.back)+'</b>, but it is better than keeping the stock for a full year.')+'</p>'+
+   '<p class="muted" style="margin:6px 0 0;font-size:13px">The suggested discount is bigger for items that sold less. Items that sold 75% or more get no discount. A clearance price never goes below the base cost. These are suggestions only: prices in your item list do not change.</p>'+
+   '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="btn alt" id="xLoWa" type="button">Send list on WhatsApp</button><button class="btn alt" id="xLoPdf" type="button">Save as PDF</button></div>'}
+ function loUi(){
+  const c=$('xLeft');if(!c)return;const sl=seasons();
+  if(LO.sea&&!sl.find(x=>x.id===LO.sea))LO.sea='';
+  c.innerHTML='<b style="font-size:18px">📦 Leftover stock report</b><p class="muted" style="margin:6px 0">Use this after the season. It shows the stock that is still unsold, how much money is stuck in it, and a clearance discount for each item.</p>'+
+   '<div class="row" style="flex-wrap:wrap;align-items:flex-end;gap:10px"><label style="flex:2;min-width:180px">Count sales from<select id="xLoSea">'+opt('','All bills',LO.sea)+sl.map(x=>opt(x.id,esc(x.n),LO.sea)).join('')+'</select></label><label style="flex:1;min-width:150px">Highest clearance discount %<input id="xLoMax" type="number" min="0" max="100" inputmode="numeric" value="'+esc(LO.max)+'"></label></div>'+
+   (sl.length?'':'<p class="muted" style="margin:6px 0 0;font-size:13px">To count only one season, add it in Admin &gt; Season comparison.</p>')+
+   '<div id="xLoBody"></div>';
+  loBody()}
+ const when=()=>LO.tot&&LO.tot.se?LO.tot.se.n:'All bills';
+ $('xLeft').onchange=e=>{if(e.target.id==='xLoSea'){LO.sea=e.target.value;loBody()}};
+ $('xLeft').oninput=e=>{if(e.target.id==='xLoMax'){LO.max=e.target.value;loBody()}};
+ $('xLeft').onclick=e=>{const id=e.target.id;
+  if(id==='xLoWa'){const L=LO.list.slice(0,30);if(!L.length)return;
+   openUrl('https://wa.me/?text='+encodeURIComponent('Leftover stock ('+S.set.name+', '+dk(new Date())+'):\n'+L.map(r=>'- '+r.n+': '+r.s+' left'+(r.d?', clearance '+r.d+'% off = Rs '+r.cp:'')).join('\n')+'\nValue at cost: Rs '+Math.round(LO.tot.cost)))}
+  else if(id==='xLoPdf'){loCalc();const T=LO.tot,tr=(a,b)=>'<tr><td>'+a+'</td><td class="r">'+b+'</td></tr>';
+   $('repPrint').innerHTML='<h2 style="margin:0">'+esc(S.set.name)+'</h2><div>Leftover stock report: '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+' (sales counted: '+esc(when())+')</div>'+
+    '<table><tr><th>Summary</th><th class="r">Amount</th></tr>'+tr('Items with stock left',T.items)+tr('Pieces left',T.left)+tr('Value at cost',money(T.cost))+tr('Value at selling price',money(T.val))+tr('If sold at clearance prices',money(T.back))+'</table>'+
+    '<table><tr><th>Item</th><th class="r">Left</th><th class="r">Sold</th><th class="r">Value at cost</th><th class="r">Clearance</th><th class="r">Clearance price</th></tr>'+
+    LO.list.map(r=>'<tr><td>'+esc(r.n)+'</td><td class="r">'+r.s+'</td><td class="r">'+r.so+'</td><td class="r">'+money(r.cost)+'</td><td class="r">'+(r.d?r.d+'% off':'none')+'</td><td class="r">'+(r.d?money(r.cp):'-')+'</td></tr>').join('')+'</table>';
+   document.body.className='pr-rep';doPrint('leftover-stock-'+dk(new Date()))}};
+ const _rlo=renderItems;renderItems=function(){_rlo();loUi()};
 })();
 </script>
 </body></html>
