@@ -1,6 +1,6 @@
 {
-  "version": "1.3.8",
-  "notes": "New: Leftover stock report in Items & stock (unsold stock, value at cost, clearance discount ideas). Removed: Low-stock reorder list.",
+  "version": "1.3.9",
+  "notes": "New: Leftover stock report in Items & stock (unsold stock, value at cost, clearance discount ideas). New: Price list with photos (PDF or WhatsApp) in Items & stock. Removed: Low-stock reorder list.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
