@@ -391,6 +391,8 @@ nav button *{pointer-events:none}
   <p><label>Low-stock level<input id="sLow" type="number" min="0"></label></p>
   <p><label><input id="sSurge" type="checkbox"> Raise price when stock is low</label> <label>by % <input id="sSpct" type="number" min="0" style="width:70px"></label> <button class="btn sm" id="sSurgeSave">Save</button></p>
   <p class="muted">When an item's stock is at the low-stock level or less, new bills charge the higher price. The saved item price does not change.</p>
+  </div>
+  <div class="sgrp" id="stPin"><b>🔐 My PIN</b>
   <p><label><span id="sPinLbl">PIN</span> (leave empty for none)<input id="sPin" type="password" inputmode="numeric" maxlength="8"></label></p><p><button class="btn" id="pinSave">Save PIN</button></p>
   <p class="muted">This PIN is asked only when you open the app or switch user. Tab and action locks are set by the admin in the Admin tab.</p>
   </div>
@@ -439,6 +441,9 @@ nav button *{pointer-events:none}
   <p class="muted">The sample prices are typical retail rates for a stall. Replace them with your own price list in Items &amp; stock.</p>
   <div id="notesBox" style="margin:14px 0"><b>📝 Notes</b> <span class="muted" id="notesInfo" style="font-size:13px"></span>
    <textarea id="sNotes" rows="6" maxlength="20000" placeholder="Write your notes here (supplier numbers, reminders, anything). Saved automatically." style="width:100%;margin-top:6px;background:var(--bg);color:inherit;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit"></textarea></div>
+  </div>
+  <div class="sgrp" id="stDanger"><b>Reset all data</b>
+  <p class="muted">Deletes every item, sale and setting on this device and starts again. You will be asked to confirm.</p>
   <button class="btn alt" id="reset">Reset all data</button>
   </div>
  </div>
@@ -4205,7 +4210,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.6';                                   /* change this on every release */
+ const APP_VERSION='1.3.7';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4482,4 +4487,65 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 })();
 </script>
 
+<style>
+/* ===== Setup tab: category sidebar + search ===== */
+#t-setup>.setupGrid{display:none}
+#stWrap{display:flex;gap:18px;align-items:flex-start;max-width:1100px;margin:0 auto}
+#stNav{flex:0 0 220px;position:sticky;top:8px}
+#stQ{width:100%;margin-bottom:10px}
+#stTabs{display:flex;flex-direction:column;gap:2px}
+#stTabs button{display:flex;gap:10px;align-items:center;text-align:left;background:none;border:0;border-radius:10px;padding:10px 12px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer;min-height:44px;box-shadow:none}
+#stTabs button:hover{background:var(--line)}
+#stTabs button.on{background:var(--card);box-shadow:inset 3px 0 0 var(--acc),0 1px 3px rgba(22,32,58,.12)}
+#stTabs button[data-c=danger]{color:var(--acc);margin-top:10px}
+#stMain{flex:1;min-width:0}
+.stP{display:none}.stP.on{display:block}
+#stWrap.searching .stP.has{display:block}#stWrap.searching .stP.on:not(.has){display:none}
+.stP>h3{margin:0 0 12px;font-size:20px}
+#stMain>.stP>*:not(h3){margin:0 0 12px!important;display:block}
+#stMain [hidden]{display:none!important}
+@media(max-width:800px){#stWrap{flex-direction:column;gap:10px}#stNav{position:static;flex:none;width:100%}
+#stTabs{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:4px}
+#stTabs button{flex:none;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:8px 14px;min-height:40px}
+#stTabs button.on{background:var(--acc);color:var(--acc-ink,#fff);border-color:var(--acc);box-shadow:none}
+#stTabs button[data-c=danger]{margin-top:0}}
+</style>
+<script>
+(function(){
+const ts=document.getElementById('t-setup');if(!ts)return;
+const CATS=[['shop','🏪','Shop'],['offers','🏷️','Offers'],['display','✨','Display & Goals'],['users','👥','Users & PIN'],['data','☁️','Data & Sync'],['notes','📝','Notes'],['danger','⚠️','Danger zone']];
+/* which card goes where (first matching selector decides order inside a category) */
+const MAP={danger:['#stDanger'],users:['#stPin','#usersCard'],display:['#goalCard','#exCard'],offers:['#dpCard','#cpCard','#sumCard'],notes:['#notesBox'],data:['#updCard','#bkSave','#abCard','#sheetUrl','#syncCode','#aboutMode'],shop:['#sName']};
+const wrap=document.createElement('div');wrap.id='stWrap';
+wrap.innerHTML='<div id="stNav"><input id="stQ" type="search" placeholder="Search settings…" aria-label="Search settings" autocomplete="off"><div id="stTabs">'
+ +CATS.map(c=>'<button type="button" data-c="'+c[0]+'"><span>'+c[1]+'</span>'+c[2]+'</button>').join('')
+ +'</div></div><div id="stMain">'+CATS.map(c=>'<section class="stP" id="stP-'+c[0]+'"><h3>'+c[1]+' '+c[2]+'</h3></section>').join('')
+ +'<p id="stNone" class="muted" hidden>No settings match your search.</p></div>';
+ts.insertBefore(wrap,ts.firstChild);
+const panels=[...wrap.querySelectorAll('.stP')],q=wrap.querySelector('#stQ');
+const find=(el,sels)=>sels.findIndex(s=>el.matches(s)||el.querySelector(s));
+function sort(){
+ const g=ts.querySelector('.setupGrid');
+ [...ts.children].filter(e=>e!==wrap&&e!==g).concat(g?[...g.children]:[]).forEach(e=>{
+  for(const c in MAP){if(find(e,MAP[c])>-1){document.getElementById('stP-'+c).appendChild(e);break}}});
+ panels.forEach(p=>{const cat=p.id.slice(4),w=e=>{const i=find(e,MAP[cat]);return i<0?99:i};
+  [...p.children].filter(e=>e.tagName!=='H3').sort((a,b)=>w(a)-w(b)).forEach(e=>p.appendChild(e))});
+ filter()}
+function pick(c){try{localStorage.setItem('st-cat',c)}catch(e){}
+ panels.forEach(p=>p.classList.toggle('on',p.id==='stP-'+c));
+ wrap.querySelectorAll('#stTabs button').forEach(b=>b.classList.toggle('on',b.dataset.c===c))}
+function filter(){const v=q.value.trim().toLowerCase();wrap.classList.toggle('searching',!!v);let any=false;
+ panels.forEach(p=>{let n=0;[...p.children].forEach(e=>{if(e.tagName==='H3')return;
+  const t=(e.textContent+' '+[...e.querySelectorAll('input,textarea')].map(i=>i.placeholder||'').join(' ')).toLowerCase();
+  const m=!v||t.includes(v);e.hidden=!m;if(m)n++});
+  p.classList.toggle('has',!!v&&n>0);if(v&&n)any=true});
+ wrap.querySelector('#stNone').hidden=!v||any}
+wrap.querySelector('#stTabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;q.value='';filter();pick(b.dataset.c)};
+q.oninput=filter;
+let c0='shop';try{c0=localStorage.getItem('st-cat')||'shop'}catch(e){}
+if(!MAP[c0])c0='shop';pick(c0);sort();
+/* cards added later by other scripts (Sheet, Sync, Update, Users) are filed automatically */
+new MutationObserver(sort).observe(ts,{childList:true});
+})();
+</script>
 </body></html>

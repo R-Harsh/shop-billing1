@@ -1,6 +1,6 @@
 {
-  "version": "1.3.6",
-  "notes": "Small improvements and fixes.",
+  "version": "1.3.7",
+  "notes": "Setup is now tidy: a side menu with Shop, Offers, Display & Goals, Users & PIN, Data & Sync, Notes and Danger zone, plus a search box to find any setting fast.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
