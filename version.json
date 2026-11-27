@@ -1,6 +1,6 @@
 {
-  "version": "1.3.25",
-  "notes": "Bill page: removed the camera Scan button; Order A to Z / Z to A now next to search. Bill discounts set in Setup are now applied automatically when the bill goes above the amount.",
+  "version": "1.3.26",
+  "notes": "New: Exit button in the top bar asks 'Are you sure?' and then the user's PIN before closing. Closing with the X button shows a warning, and if you stay, the app locks and asks for a PIN.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
