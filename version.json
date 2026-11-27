@@ -1,6 +1,6 @@
 {
-  "version": "1.3.26",
-  "notes": "New: Exit button in the top bar asks 'Are you sure?' and then the user's PIN before closing. Closing with the X button shows a warning, and if you stay, the app locks and asks for a PIN.",
+  "version": "1.3.27",
+  "notes": "Closing the app: removed the browser 'changes may not be saved' warning. The Exit button and the Back button now show the app's own centered 'Are you sure you want to close the app?' box, then ask for the user's PIN.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

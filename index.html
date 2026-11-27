@@ -3354,11 +3354,13 @@ function exitApp(){
   pinBox('Enter your PIN to close',SYNC.who+', enter your PIN','Close app',(v,M)=>{if(v===p)done();else{M('Wrong PIN');$('apIn').value=''}})});
 }
 $('exitBtn').onclick=exitApp;
-/* X button / closing the tab: the browser shows its own warning. If the person presses Stay, the app locks and asks for a PIN. */
-window.addEventListener('beforeunload',e=>{
- if(Date.now()<EXITOK)return;
- e.preventDefault();e.returnValue='';
- setTimeout(()=>{if(Date.now()<EXITOK)return;if(myPin()){unlocked=false;try{closeBill()}catch(x){}try{show('bill')}catch(x){}gate(false)}},500)});
+/* Phone/PC Back button: show the app's own centered "close the app?" box instead of leaving. */
+try{history.pushState({bf:1},'')}catch(e){}
+window.addEventListener('popstate',()=>{
+ try{history.pushState({bf:1},'')}catch(e){}
+ if(typeof GATE!=='undefined'&&GATE.on)return;
+ if($('modal').style.display==='flex'){closeBill();return}
+ exitApp()});
 
 
 {const _sh=show;show=function(t){_sh(t);if(t==='log')renderLog()}}
@@ -4421,7 +4423,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.26';                                   /* change this on every release */
+ const APP_VERSION='1.3.27';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
