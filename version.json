@@ -1,6 +1,6 @@
 {
-  "version": "1.3.28",
-  "notes": "App now opens full screen from the Desktop icon. Closing with Exit asks Are you sure and then the user's PIN. If the window is closed any other way, the app opens again and asks for the PIN. Browser Leave/Stay warning is back; Stay locks the app.",
-  "url": "https://r-harsh.github.io/shop-billing1/",
-  "force": false
+  "version": "1.3.29",
+  "force": false,
+  "notes": "Removed the Exit button from the top right.",
+  "url": "https://r-harsh.github.io/shop-billing1/"
 }
