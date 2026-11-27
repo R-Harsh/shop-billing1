@@ -1,6 +1,6 @@
 {
-  "version": "1.3.24",
-  "notes": "New: Pack pricing. In Items & stock, press Actions > Pack on any item to set pieces per pack and pack price. At billing, full packs are charged at the pack price automatically. New Admin switch: Set pack size and pack price.",
+  "version": "1.3.25",
+  "notes": "Bill page: removed the camera Scan button; Order A to Z / Z to A now next to search. Bill discounts set in Setup are now applied automatically when the bill goes above the amount.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
