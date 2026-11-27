@@ -477,7 +477,19 @@ const $=id=>document.getElementById(id);
 const editSale=()=>EDITNO?S.sales.find(x=>x.no==EDITNO):null;
 const bp=it=>S.set&&S.set.surge&&it.s<=(S.set.low||0)?Math.round(it.p*(1+(S.set.spct||15)/100)):it.p;
 const gi=l=>{const it=S.items.find(i=>i.c===l.c);return{c:l.c,n:it?it.n:(l.n||l.c),p:l.p!==undefined?l.p:(it?bp(it):0),k:l.k!==undefined?l.k:(it?it.k:0),s:it?it.s:0}};
-const av=l=>{const s=editSale(),o=s?((s.lines.find(x=>x.c===l.c)||{}).q||0):0,it=S.items.find(i=>i.c===l.c);return(it?it.s:0)+o};
+const qSum=(arr,c)=>arr.reduce((a,x)=>x.c===c?a+(+x.q||0):a,0);
+/* ===== pack pricing: it.pk={n:pieces in a pack, pp:pack price or null(=n x normal price)} ===== */
+const packOf=it=>it&&it.pk&&it.pk.n>=2?it.pk:null;
+const packPrice=it=>{const pk=packOf(it);if(!pk)return 0;return pk.pp!=null&&pk.pp>=0?pk.pp:pk.n*bp(it)};
+const lineAmt=l=>{const g=gi(l),it=S.items.find(i=>i.c===l.c),pk=l.p===undefined?packOf(it):null;if(!pk)return g.p*l.q;const k=Math.floor(l.q/pk.n);return k*packPrice(it)+(l.q-k*pk.n)*g.p};
+const splitLine=l=>{const g=gi(l),it=S.items.find(i=>i.c===l.c),pk=l.p===undefined?packOf(it):null;
+ if(!pk||l.q<pk.n)return [{c:l.c,n:g.n,p:g.p,k:g.k,q:l.q}];
+ const k=Math.floor(l.q/pk.n),rest=l.q-k*pk.n,out=[{c:l.c,n:g.n+' ('+(k>1?k+' packs of ':'Pack of ')+pk.n+')',p:packPrice(it)/pk.n,k:g.k,q:k*pk.n,pk:pk.n}];
+ if(rest)out.push({c:l.c,n:g.n,p:g.p,k:g.k,q:rest});return out};
+const packNote=l=>{const it=S.items.find(i=>i.c===l.c),pk=l.p===undefined?packOf(it):null;if(!pk)return '';
+ if(l.q<pk.n)return ' · pack of '+pk.n+' = '+money(packPrice(it));
+ const k=Math.floor(l.q/pk.n),r=l.q-k*pk.n;return ' · <b style="color:var(--ok)">'+k+' pack'+(k>1?'s':'')+' of '+pk.n+' @ '+money(packPrice(it))+'</b>'+(r?' + '+r+' single':'')};
+const av=l=>{const s=editSale(),o=s?qSum(s.lines,l.c):0,it=S.items.find(i=>i.c===l.c);return(it?it.s:0)+o};
 const gst=()=>{const s=editSale();return s?{mode:s.mode,rate:s.rate}:{mode:'none',rate:0}};
 let saveFail=false;
 const save=()=>{if(typeof syncPush==='function')syncPush();if(typeof trkSaved==='function')trkSaved();if(typeof sheetKick==='function')sheetKick();try{localStorage.setItem(KEY,JSON.stringify(S));if(saveFail){saveFail=false;backupUi()}return true}catch(e){saveFail=true;backupUi();toast('Could not save. Take a backup now.');return false}};
@@ -530,7 +542,7 @@ $('barGo').onclick=()=>$('billCard').scrollIntoView({behavior:'smooth',block:'st
 let DCUS=false,DOFF=false,DAUTO=false;
 function dpr(){const D=[{v:5,m:1000},{v:10,m:3000},{v:15,m:5000}],d=(S.set&&S.set.dp)||[];
  return D.map((x,i)=>{const y=d[i];if(!y)return Object.assign({t:'p'},x);return{t:'p',v:Math.min(100,Math.max(0,Number(y.v)||0)),m:Math.max(0,Number(y.m)||0)}})}
-const discSub=()=>cart.reduce((a,l)=>a+gi(l).p*l.q,0);
+const discSub=()=>cart.reduce((a,l)=>a+lineAmt(l),0);
 const dsave=(p,sub)=>p.t==='p'?sub*Math.min(p.v,100)/100:Math.min(p.v,sub);
 function discSel(P){const v=parseFloat($('disc').value)||0,t=$('discType').value;if(!v)return'n';if(DCUS)return'c';const i=P.findIndex(p=>p.v>0&&p.v===v&&p.t===t);return i<0?'c':String(i)}
 /* runs before totals: drops a preset the bill no longer qualifies for, and auto-applies the best qualifying one */
@@ -699,7 +711,7 @@ function renderPicks(){
  const list=S.items.filter(i=>(!CAT||catOf(i).toLowerCase()===CAT.toLowerCase())&&(!q||i.c.toLowerCase().includes(q)||i.n.toLowerCase().includes(q)||String(i.p).includes(qn)||(i.bc&&i.bc.toLowerCase().includes(q))));
  const cm={};cart.forEach(l=>{cm[l.c]=l.q});
  if(SORT)list.sort((a,b)=>SORT*a.n.localeCompare(b.n,undefined,{sensitivity:'base',numeric:true}));
- const sc=$('picks').scrollTop;$('picks').innerHTML=list.map(i=>`<button class="pick ${i.s<=0?'out':i.s<=S.set.low?'low':''}" data-c="${i.c}">${cm[i.c]?'<span class="bdg">'+cm[i.c]+'</span>':''}<b>${esc(i.n)}</b><small class="pr">${money(bp(i))}${bp(i)>i.p?' ▲':''}</small><br><small class="st">${i.s<=0?'Out of stock':i.s+' in stock'}</small></button>`).join('')||'<p class="muted">No item matches. Add it in Items &amp; stock.</p>';$('picks').scrollTop=sc;
+ const sc=$('picks').scrollTop;$('picks').innerHTML=list.map(i=>`<button class="pick ${i.s<=0?'out':i.s<=S.set.low?'low':''}" data-c="${i.c}">${cm[i.c]?'<span class="bdg">'+cm[i.c]+'</span>':''}<b>${esc(i.n)}</b><small class="pr">${money(bp(i))}${bp(i)>i.p?' ▲':''}</small><br><small class="st">${i.s<=0?'Out of stock':i.s+' in stock'}${packOf(i)?' · pack of '+i.pk.n+' = '+money(packPrice(i)):''}</small></button>`).join('')||'<p class="muted">No item matches. Add it in Items &amp; stock.</p>';$('picks').scrollTop=sc;
 }
 $('search').oninput=renderPicks;
 $('search').onkeydown=e=>{if(e.key==='Enter'){const q=e.target.value.trim().toLowerCase();
@@ -711,7 +723,7 @@ function addToCart(c){const it=find(c);const l=cart.find(x=>x.c===c);const n=(l?
  if(n>a){toast('Only '+a+' left of '+it.n);return}
  if(l)l.q=n;else cart.push({c,q:1});renderCart()}
 function calc(){
- const sub=cart.reduce((a,l)=>a+gi(l).p*l.q,0);
+ const sub=cart.reduce((a,l)=>a+lineAmt(l),0);
  const dv=parseFloat($('disc').value)||0;
  let d=$('discType').value==='p'?sub*Math.min(dv,100)/100:Math.min(dv,sub);
  const G=gst(),base=sub-d,r=G.rate/100;let gs=0,total=base;
@@ -1983,9 +1995,9 @@ function qrSvg(text){const q=new qrLib(-1,0);q.addData(text);q.make();const n=q.
  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+z+' '+z+'" width="210" height="210" shape-rendering="crispEdges"><rect width="'+z+'" height="'+z+'" fill="#fff"/><path d="'+p+'" fill="#000"/></svg>'}
 function upiUrl(u,amt,no){return 'upi://pay?pa='+encodeURIComponent(u).replace(/%40/g,'@')+'&pn='+encodeURIComponent((S.set&&S.set.name)||'Shop')+'&am='+Number(amt).toFixed(2)+'&cu=INR&tn='+encodeURIComponent('Bill '+no)}
 function renderCart(){
- $('cart').innerHTML=cart.length?cart.map((l,i)=>{const it=gi(l);return `<div class="line"><div><b>${esc(it.n)}</b><br><small class="muted">${money(it.p)} each</small></div>
+ $('cart').innerHTML=cart.length?cart.map((l,i)=>{const it=gi(l);return `<div class="line"><div><b>${esc(it.n)}</b><br><small class="muted">${money(it.p)} each${packNote(l)}</small></div>
  <div class="q"><button data-i="${i}" data-d="-1" aria-label="Less">−</button><input type="number" min="1" value="${l.q}" data-i="${i}" aria-label="Quantity"><button data-i="${i}" data-d="1" aria-label="More">+</button></div>
- <b>${money(it.p*l.q)}</b><button class="rm" data-rm="${i}" aria-label="Remove item">✕</button></div>`}).join(''):'<p class="muted">Tap an item to start the bill.</p>';
+ <b>${money(lineAmt(l))}</b><button class="rm" data-rm="${i}" aria-label="Remove item">✕</button></div>`}).join(''):'<p class="muted">Tap an item to start the bill.</p>';
  discAuto();freeSync();const t=calc();
  $('totals').innerHTML=`<div class="tot"><span>Subtotal</span><span>${money(t.sub)}</span></div>`+
   (t.d?`<div class="tot"><span>Discount (${fp(t.d,t.sub)}%)</span><span>−${money(t.d)}</span></div>`:'')+
@@ -2222,7 +2234,7 @@ function showImg(s,raw,blob,name){
  $('iWa').onclick=()=>{let n=String(raw||s.phone||'').replace(/\D/g,'');if(n.length===11&&n[0]==='0')n=n.slice(1);if(n.length===10)n='91'+n;openUrl(n.length>=11&&n.length<=15?'https://wa.me/'+n:'https://web.whatsapp.com/')}}
 function curBill(){
  if(cart.length){const t=calc(),sel=document.querySelector('input[name=pay]:checked');
-  return{draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()}}
+  return{draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.flatMap(splitLine),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()}}
  return S.sales[S.sales.length-1]}
 $('sendWa').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');return}sendPdf(s,$('phone').value)};
 $('sendImg').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');return}sendImg(s,$('phone').value)};
@@ -2230,7 +2242,7 @@ $('sendImg').onclick=()=>{const s=curBill();if(!s){toast('Make a bill first');re
 $('print').onclick=()=>{
  if(!cart.length){const l=S.sales[S.sales.length-1];if(l)printBill(l);else toast('Nothing to print yet');return}
  const t=calc(),sel=document.querySelector('input[name=pay]:checked');
- printBill({draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.map(l=>{const it=gi(l);return{c:l.c,n:it.n,p:it.p,q:l.q}}),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()})};
+ printBill({draft:1,by:SYNC.who||'',no:EDITNO||S.next,t:Date.now(),lines:cart.flatMap(splitLine),free:freeLines(),sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:gst().mode,rate:gst().rate,pay:sel?sel.value:'',...(sel&&sel.value==='Split'?{split:nsSplit()}:{}),cust:$('cust').value.trim(),phone:$('phone').value.trim()})};
 function renderHeld(){$('held').innerHTML=S.held.length?'<b class="muted">Held bills</b>'+S.held.map((h,i)=>`<div class="row" style="margin-top:4px"><span style="flex:1">${h.cart.length} items, ${esc(h.cust||'no name')}</span><button class="btn alt sm" data-r="${i}">Resume</button></div>`).join(''):''}
 $('held').onclick=e=>{const i=e.target.dataset.r;if(i===undefined)return;
  if(EDITNO){toast('Finish or cancel the bill edit first');return}
@@ -2246,7 +2258,7 @@ $('done').onclick=()=>{
  const t=calc();
  const FL=freeLines();
  for(const f of FL){if(!f.c)continue;const it=find(f.c),inC=cart.reduce((a,l)=>l.c===f.c?a+l.q:a,0);if(!it||inC+f.q>it.s){FREE=null;renderCart();toast('Not enough stock for the free gift. It was removed');return}}
- const lines=cart.map(l=>{const it=find(l.c);return{c:l.c,n:it.n,p:bp(it),k:it.k,q:l.q}});
+ const lines=cart.flatMap(splitLine);
  for(const l of cart){if(l.q>find(l.c).s){toast('Stock changed for '+find(l.c).n);return}}
  const sale={no:S.next,t:Date.now(),by:SYNC.who||'',lines,sub:t.sub,d:t.d,gst:t.gst,round:t.round,adj:t.adj,total:t.total,mode:'none',rate:0,
   pay:SP?'Split':document.querySelector('input[name=pay]:checked').value,cust:$('cust').value.trim(),phone:$('phone').value.trim()};if(SP)sale.split=SP;if(FL.length)sale.free=FL;
@@ -2416,11 +2428,34 @@ function showPriceHistory(x){const it=S.items[x];if(!it)return;const ph=it.ph||[
  (ph.length?ph.map((h,k)=>{const up=h.n>h.o,lowCost=h.n>0&&h.n<it.k;return '<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>'+(up?'Raised':'Lowered')+' from '+money(h.o)+' to '+money(h.n)+' on '+dt(h.t)+'</b>, '+esc(priceFx(it,k))+'.'+(lowCost?'<br><span style="color:var(--acc);font-size:13px">⚠ This price is below the current cost</span>':'')+'</div>'}).reverse().join(''):'<p class="muted">No price changes recorded yet. When you change the customer price of this item, it is remembered here.</p>')+
  '<div class="row" style="margin-top:10px"><button class="btn alt" id="phClose">Close</button></div>';
  $('modal').style.display='flex';$('phClose').onclick=closeBill}
+function packSetup(c){const it=find(c);if(!it)return;const pk=packOf(it);
+ $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Pack: '+esc(it.n)+'</b></p>'
+ +'<p class="muted" style="margin:0 0 10px">When a customer buys this many pieces or more, each full pack is charged at the pack price. Extra pieces are charged at the normal price.</p>'
+ +'<small class="muted">Pieces in one pack</small><input id="pkN" type="number" min="2" step="1" inputmode="numeric" value="'+(pk?pk.n:5)+'" style="width:100%;margin-bottom:8px">'
+ +'<small class="muted">Pack price (₹). Leave empty to use normal price × pieces</small><input id="pkP" type="number" min="0" step="any" inputmode="decimal" value="'+(pk&&pk.pp!=null?pk.pp:'')+'" style="width:100%">'
+ +'<p id="pkInfo" style="margin:10px 0"></p>'
+ +'<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn" id="pkSave">Save</button>'+(pk?'<button class="btn alt" id="pkOff">Remove pack</button>':'')+'<button class="btn alt" id="pkNo">Cancel</button></div>';
+ $('modal').style.display='flex';
+ const info=()=>{const n=parseInt($('pkN').value),raw=$('pkP').value.trim(),pp=raw===''?null:parseFloat(raw),el=$('pkInfo');
+  if(!(n>=2)){el.className='muted';el.textContent='Enter 2 or more pieces in a pack.';return}
+  const normal=n*it.p,price=pp==null?normal:pp,cost=n*(it.k||0);
+  $('pkP').placeholder=String(normal);
+  let t='Normal price for '+n+' pieces: '+money(normal)+'. Pack price: '+money(price)+(price<normal?' (customer saves '+money(normal-price)+')':'')+'. That is '+money(price/n)+' per piece.';
+  el.className='muted';if(price<cost){t+=' Warning: this is below your cost of '+money(cost)+'.';el.style.color='var(--acc)'}else el.style.color='';
+  el.textContent=t};
+ $('pkN').oninput=info;$('pkP').oninput=info;info();
+ $('pkNo').onclick=closeBill;
+ if($('pkOff'))$('pkOff').onclick=()=>{delete it.pk;save();closeBill();renderItems();renderPicks();renderCart();toast('Pack removed')};
+ $('pkSave').onclick=()=>{const n=parseInt($('pkN').value),raw=$('pkP').value.trim(),pp=raw===''?null:parseFloat(raw);
+  if(!(n>=2)){toast('Pieces in one pack must be 2 or more');return}
+  if(pp!=null&&!(pp>=0)){toast('Enter a correct pack price');return}
+  it.pk={n,pp};save();closeBill();renderItems();renderPicks();renderCart();toast('Pack saved: '+n+' pieces = '+money(packPrice(it)))}}
 function itemOptions(c){const x=S.items.findIndex(o=>o.c===c),it=S.items[x];if(!it)return;
- $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>'+esc(it.n)+'</b></p><div style="display:grid;gap:8px"><button class="btn" id="ioEdit">Edit</button><button class="btn alt" id="ioHist">Price history'+(it.ph&&it.ph.length?' ('+it.ph.length+')':'')+'</button><button class="btn alt" id="ioDel">Delete</button><button class="btn alt" id="ioNo">Cancel</button></div>';
+ $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>'+esc(it.n)+'</b></p><div style="display:grid;gap:8px"><button class="btn" id="ioEdit">Edit</button><button class="btn alt" id="ioHist">Price history'+(it.ph&&it.ph.length?' ('+it.ph.length+')':'')+'</button><button class="btn alt" id="ioPack">Pack'+(packOf(it)?' (pack of '+it.pk.n+')':'')+'</button><button class="btn alt" id="ioDel">Delete</button><button class="btn alt" id="ioNo">Cancel</button></div>';
  $('modal').style.display='flex';$('ioNo').onclick=closeBill;
  $('ioEdit').onclick=()=>{closeBill();IEDIT.add(c);renderItems()};
  $('ioHist').onclick=()=>showPriceHistory(x);
+ $('ioPack').onclick=()=>{const go=()=>packSetup(c);if(actNeedsAdmin('packSet'))adminGate('Admin PIN needed to set pack size or pack price',go);else go()};
  $('ioDel').onclick=()=>{closeBill();guard('delItem','Delete "'+it.n+'" from the item list? Past bills are not affected.','Delete item',()=>{const k=S.items.findIndex(o=>o.c===c);if(k<0)return;S.items.splice(k,1);cart=cart.filter(l=>l.c!==c);save();renderItems();renderCart();toast('Item deleted')})}}
 /* category lock: once chosen, double-click (or double-tap) + confirm is needed to change it */
 (function(){const st=document.createElement('style');st.textContent='#itemTable td.catLk select{pointer-events:none;cursor:pointer}#itemTable td.catLk{cursor:pointer}';document.head.appendChild(st);
@@ -2536,7 +2571,7 @@ function viewBill(no){
 let EB=null;
 function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
  guard('editBill','Edit bill '+bn(s)+'? You will go to the Bill page to change everything. Stock, totals and customer dues update when you save.','Edit bill',()=>loadEdit(s.no))}
-function ebAvail(c){const s=S.sales.find(x=>x.no==EB.no),it=find(c);if(!it)return Infinity;return it.s+((s.lines.find(x=>x.c===c)||{}).q||0)}
+function ebAvail(c){const s=S.sales.find(x=>x.no==EB.no),it=find(c);if(!it)return Infinity;return it.s+qSum(s.lines,c)}
 function editBill(no){
  const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
  let dt='a',dv=s.d?String(s.d):'';
@@ -2591,12 +2626,12 @@ function ebSave(){
  if(!EB.L.length){toast('Add at least one item, or cancel the bill');return}
  const cust=$('ebCust').value.trim(),phone=$('ebPhone').value.trim(),pay=$('ebPay').value;
  if(pay==='Pay later'&&!cust&&!phone){toast('Enter the customer name or mobile number for Pay later');return}
- for(const l of EB.L){const it=find(l.c);if(!it)continue;const o=(s.lines.find(x=>x.c===l.c)||{q:0}).q;if(l.q>it.s+o){toast('Stock changed for '+it.n);return}}
+ for(const l of EB.L){const it=find(l.c);if(!it)continue;const o=qSum(s.lines,l.c);if(qSum(EB.L,l.c)>it.s+o){toast('Stock changed for '+it.n);return}}
  const ok=ck(s),nk=ck({cust,phone});
  if(ok!==nk&&S.pays.some(p=>p.k===ok)){toast('Payments already received for this customer. Keep the same name and mobile');return}
  const t=ebCalc(),old=s.lines;
  new Set(old.map(l=>l.c).concat(EB.L.map(l=>l.c))).forEach(c=>{const it=find(c);if(!it)return;
-  const o=(old.find(l=>l.c===c)||{q:0}).q,n=(EB.L.find(l=>l.c===c)||{q:0}).q;it.s+=o-n});
+  const o=qSum(old,c),n=qSum(EB.L,c);it.s+=o-n});
  if(s.ot===undefined)s.ot=s.total;
  s.lines=EB.L.map(l=>({c:l.c,n:l.n,p:l.p,k:l.k,q:l.q}));
  s.sub=t.sub;s.d=t.d;s.gst=t.gst;s.round=t.round;s.adj=t.adj;s.total=t.total;
@@ -2647,14 +2682,14 @@ function saveEdit(){
   cur[k]=nv;const v={};Object.keys(cur).forEach(x=>{if(cur[x]>0)v[x]=cur[x]});const ks=Object.keys(v);
   if(ks.length>1){pay='Split';split=v}else{pay=ks[0]||s.pay;split=null}}
  if((pay==='Pay later'||(split&&split['Pay later']>0))&&!cust&&!phone){toast('Enter the customer name or mobile number for Pay later');return}
- for(const l of cart){const it=find(l.c);if(!it)continue;if(l.q>av(l)){toast('Stock changed for '+it.n);return}}
+ for(const l of cart){const it=find(l.c);if(!it)continue;if(qSum(cart,l.c)>av(l)){toast('Stock changed for '+it.n);return}}
  const ok=ck(s),nk=ck({cust,phone});
  if(ok!==nk&&S.pays.some(p=>p.k===ok)){toast('Payments already received for this customer. Keep the same name and mobile');return}
  const t=calc(),old=s.lines;
  new Set(old.map(l=>l.c).concat(cart.map(l=>l.c))).forEach(c=>{const it=find(c);if(!it)return;
-  const o=(old.find(l=>l.c===c)||{q:0}).q,n=(cart.find(l=>l.c===c)||{q:0}).q;it.s+=o-n});
+  const o=qSum(old,c),n=qSum(cart,c);it.s+=o-n});
  if(s.ot===undefined)s.ot=s.total;
- s.lines=cart.map(l=>{const g=gi(l);return{c:l.c,n:g.n,p:g.p,k:g.k,q:l.q}});
+ s.lines=cart.flatMap(splitLine);
  s.sub=t.sub;s.d=t.d;s.gst=t.gst;s.round=t.round;s.adj=t.adj;s.total=t.total;
  s.cust=cust;s.phone=phone;s.pay=pay;if(split)s.split=split;else delete s.split;
  s.eby=SYNC.who||'';s.et=Date.now();s.ec=(s.ec||0)+1;s.er=why;
@@ -3212,6 +3247,7 @@ const PACTS=[
 ['whatsapp','Send bill / message on WhatsApp','Admin PIN for WhatsApp PDF, WhatsApp photo and customer reminders','Bill counter'],
 ['addItem','Add a new item','Admin PIN to press Add item in the Item list','Items and stock'],
 ['editItem','Edit item (price, cost, stock, name, photo)','Admin PIN to open the Actions menu of an item','Items and stock'],
+['packSet','Set pack size and pack price','Admin PIN to set pack size or pack price on an item (Actions menu, Pack button)','Items and stock'],
 ['stockIn','Stock-in from supplier','Admin PIN to add stock','Items and stock'],
 ['stockOut','Stock-out to supplier','Admin PIN to send stock back','Items and stock'],
 ['receive','Receive pending payment','Admin PIN to take a payment from a pay-later customer','Money'],
@@ -4387,7 +4423,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.23';                                   /* change this on every release */
+ const APP_VERSION='1.3.24';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);

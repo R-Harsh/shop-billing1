@@ -1,6 +1,6 @@
 {
-  "version": "1.3.23",
-  "notes": "Item list: removed the 'Put items in a category' section from the Categories screen. Use the item list to set a category.",
+  "version": "1.3.24",
+  "notes": "New: Pack pricing. In Items & stock, press Actions > Pack on any item to set pieces per pack and pack price. At billing, full packs are charged at the pack price automatically. New Admin switch: Set pack size and pack price.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
