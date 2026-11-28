@@ -336,9 +336,10 @@ nav button *{pointer-events:none}
 </section>
 
 <section class="tab" id="t-sales">
+ <div class="card" style="margin-bottom:12px"><div class="row" style="flex-wrap:wrap;align-items:flex-end;gap:8px"><label style="flex:1;min-width:160px">Sales of date<input type="date" id="sDate"></label><button class="btn alt" id="sPrev" type="button" title="Previous day">&#8249;</button><button class="btn alt" id="sNext" type="button" title="Next day">&#8250;</button><button class="btn alt" id="sToday" type="button">Today</button><button class="btn alt" id="sAll" type="button">All bills</button></div><p class="muted" id="sInfo" style="margin:8px 0 0"></p></div>
  <div class="stats" id="stats"></div>
- <div class="card" style="margin-bottom:12px"><b>Items sold today</b><div class="scroll" id="sold"></div></div>
- <div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><span><b>All bills</b> <span class="muted">Tap a bill to see its full details</span></span><button class="btn alt sm" id="trashBtn" type="button">&#128465; Cancelled bills</button></div><div class="scroll" id="bills"></div></div>
+ <div class="card" style="margin-bottom:12px"><b id="soldT">Items sold today</b><div class="scroll" id="sold"></div></div>
+ <div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><span><b id="billsT">All bills</b> <span class="muted">Tap a bill to see its full details</span></span><button class="btn alt sm" id="trashBtn" type="button">&#128465; Cancelled bills</button></div><div class="scroll" id="bills"></div></div>
 </section>
 
 <section class="tab" id="t-report">
@@ -2517,17 +2518,29 @@ document.addEventListener('keydown',e=>{
  if(e.key.length===1){if(now-_st>80)_sb='';_sb+=e.key;_st=now}},true);
 
 /* sales */
+function sSel(){const v=$('sDate')?$('sDate').value:'';return /^\d{4}-\d{2}-\d{2}$/.test(v)?v:''}
+function sShift(n){const v=sSel()||dk(new Date());const d=new Date(v+'T12:00:00');d.setDate(d.getDate()+n);$('sDate').value=dk(d);renderSales()}
 function renderSales(){
- const ss=S.sales.filter(s=>new Date(s.t).toDateString()===today()&&!s.void);
+ const sel=sSel(),isT=!sel||sel===dk(new Date());
+ const lbl=sel?new Date(sel+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'';
+ $('sInfo').textContent=sel?(isT?'Showing today ('+lbl+'). Choose another date to see that day.':'Showing sales of '+lbl+' only.'):'Showing today in the boxes above. The bill list shows all bills. Choose a date to see only that day.';
+ $('soldT').textContent=sel?(isT?'Items sold today':'Items sold on '+lbl):'Items sold today';
+ $('billsT').textContent=sel?'Bills on '+lbl:'All bills';
+ const ss=S.sales.filter(s=>(sel?dk(s.t)===sel:new Date(s.t).toDateString()===today())&&!s.void);
  const sum=ss.reduce((a,s)=>a+s.total,0);
  const by=p=>ss.reduce((a,s)=>a+payAmt(s,p),0);
- $('stats').innerHTML=`<div class="stat"><span class="muted">Bills today</span><b>${ss.length}</b></div><div class="stat"><span class="muted">Total sales</span><b>${money(sum)}</b></div>
+ $('stats').innerHTML=`<div class="stat"><span class="muted">${isT?'Bills today':'Bills'}</span><b>${ss.length}</b></div><div class="stat"><span class="muted">Total sales</span><b>${money(sum)}</b></div>
  <div class="stat"><span class="muted">Cash</span><b>${money(by('Cash'))}</b></div><div class="stat"><span class="muted">UPI</span><b>${money(by('UPI'))}</b></div>${by('Card')>0?`<div class="stat"><span class="muted">Card (old bills)</span><b>${money(by('Card'))}</b></div>`:''}<div class="stat"><span class="muted">Pay later</span><b>${money(by('Pay later'))}</b></div>`;
  const m={};ss.forEach(s=>s.lines.forEach(l=>{m[l.n]=m[l.n]||{q:0,a:0};m[l.n].q+=l.q;m[l.n].a+=l.q*l.p}));
  const rows=Object.entries(m).sort((a,b)=>b[1].a-a[1].a);
- $('sold').innerHTML=rows.length?'<table class="table"><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>'+rows.map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v.q}</td><td>${money(v.a)}</td></tr>`).join('')+'</table>':'<p class="muted">No sales yet today.</p>';
- $('bills').innerHTML=S.sales.length?'<table class="table"><tr><th>No.</th><th>Date &amp; time</th><th>Customer</th><th>Billed by</th><th>Paid by</th><th>Total</th><th></th></tr>'+S.sales.slice().reverse().map(s=>`<tr class="clk" data-v="${s.no}"><td>${bn(s)}${s.ec?' <small class="muted">(edited)</small>':''}</td><td>${new Date(s.t).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}, ${new Date(s.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${esc(s.cust||'')}</td><td>${esc(s.by||'-')}${s.ec?'<br><small style="color:var(--warn);font-weight:600">Edited by '+esc(s.eby||'?')+'</small>'+(s.er?'<br><small class="muted">'+esc(s.er)+'</small>':''):''}</td><td>${s.void?'Cancelled':esc(payTxt(s))}</td><td${s.void?' style="text-decoration:line-through"':''}>${money(s.total)}</td><td>${s.void?'':'<button class="btn alt sm" data-e="'+s.no+'">Edit</button> '}<button class="btn alt sm" data-p="${s.no}">Reprint</button></td></tr>`).join('')+'</table>':'<p class="muted">Completed bills appear here.</p>';
+ $('sold').innerHTML=rows.length?'<table class="table"><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>'+rows.map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v.q}</td><td>${money(v.a)}</td></tr>`).join('')+'</table>':'<p class="muted">'+(isT?'No sales yet today.':'No sales on this date.')+'</p>';
+ const bl=sel?S.sales.filter(s=>dk(s.t)===sel):S.sales;
+ $('bills').innerHTML=bl.length?'<table class="table"><tr><th>No.</th><th>Date &amp; time</th><th>Customer</th><th>Billed by</th><th>Paid by</th><th>Total</th><th></th></tr>'+bl.slice().reverse().map(s=>`<tr class="clk" data-v="${s.no}"><td>${bn(s)}${s.ec?' <small class="muted">(edited)</small>':''}</td><td>${new Date(s.t).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}, ${new Date(s.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${esc(s.cust||'')}</td><td>${esc(s.by||'-')}${s.ec?'<br><small style="color:var(--warn);font-weight:600">Edited by '+esc(s.eby||'?')+'</small>'+(s.er?'<br><small class="muted">'+esc(s.er)+'</small>':''):''}</td><td>${s.void?'Cancelled':esc(payTxt(s))}</td><td${s.void?' style="text-decoration:line-through"':''}>${money(s.total)}</td><td>${s.void?'':'<button class="btn alt sm" data-e="'+s.no+'">Edit</button> '}<button class="btn alt sm" data-p="${s.no}">Reprint</button></td></tr>`).join('')+'</table>':'<p class="muted">'+(sel?'No bills on this date.':'Completed bills appear here.')+'</p>';
 }
+$('sDate').onchange=renderSales;$('sDate').oninput=renderSales;
+$('sPrev').onclick=()=>sShift(-1);$('sNext').onclick=()=>sShift(1);
+$('sToday').onclick=()=>{$('sDate').value=dk(new Date());renderSales()};
+$('sAll').onclick=()=>{$('sDate').value='';renderSales()};
 $('bills').onclick=e=>{const ed=e.target.dataset.e;if(ed)e.stopPropagation();if(ed){openEdit(ed);return}const p=e.target.dataset.p;if(p){printBill(S.sales.find(s=>s.no==p));return}const r=e.target.closest('tr[data-v]');if(r)viewBill(r.dataset.v)};
 function viewBill(no){
  const s=S.sales.find(x=>x.no==no);if(!s)return;const d=new Date(s.t);
@@ -4438,7 +4451,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.29';                                   /* change this on every release */
+ const APP_VERSION='1.3.30';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
