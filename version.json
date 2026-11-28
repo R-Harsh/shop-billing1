@@ -1,6 +1,6 @@
 {
-  "version": "1.3.37",
-  "notes": "Desktop app goes full screen on the first click so there is no X button to press. If the window is closed another way it opens again faster and asks for the PIN.",
+  "version": "1.3.38",
+  "notes": "Fix: the Update button now works in the Desktop app. After installing the new ShopBilling.zip once, updates download and install by themselves.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
