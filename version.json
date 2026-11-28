@@ -1,6 +1,6 @@
 {
-  "version": "1.3.36",
-  "notes": "Refresh now keeps you on the same tab even when the login screen appears first. The refresh button and F5 no longer show the Leave site box or lock the app.",
+  "version": "1.3.37",
+  "notes": "Desktop app goes full screen on the first click so there is no X button to press. If the window is closed another way it opens again faster and asks for the PIN.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
