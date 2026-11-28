@@ -3378,6 +3378,8 @@ function exitPinBox(){
 if(/exitpin/.test(location.hash)){
  try{history.replaceState(null,'',location.href.replace(/#.*$/,'')+'#app')}catch(e){}
  let n=0;const w=setInterval(()=>{n++;if(GATE.on){clearInterval(w);return}if(authed||n>30){clearInterval(w);if(!GATE.on)exitPinBox()}},500)}
+/* Desktop app has no X button: Ctrl+Shift+Q asks the PIN first, then closes */
+if(LAUNCHED)document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==='Q'||e.key==='q')){e.preventDefault();if(!GATE.on&&!EXITING)exitApp()}});
 /* X button or closing the tab: the browser shows its own box. If the person presses Stay, the app locks and asks for a PIN. */
 window.addEventListener('beforeunload',e=>{
  if(Date.now()<EXITOK)return;
@@ -4474,7 +4476,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.38';                                   /* change this on every release */
+ const APP_VERSION='1.3.39';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4744,9 +4746,10 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 
  const ts=document.getElementById('t-setup');
  if(ts){
-  ts.insertAdjacentHTML('afterbegin','<div class="card updCard" id="updCard" style="margin-bottom:10px"><div class="ud"><div class="ut"><i class="dot"></i><span></span></div><div class="us"></div><button class="btn alt sm" id="updBack" type="button" style="display:none;margin-top:8px"></button></div><button class="btn" id="updCheck">Check for update</button></div>');
+  ts.insertAdjacentHTML('afterbegin','<div class="card updCard" id="updCard" style="margin-bottom:10px"><div class="ud"><div class="ut"><i class="dot"></i><span></span></div><div class="us"></div><button class="btn alt sm" id="updBack" type="button" style="display:none;margin-top:8px"></button><button class="btn alt sm" id="updClose" type="button" style="display:none;margin-top:8px">Close app (PIN needed)</button></div><button class="btn" id="updCheck">Check for update</button></div>');
   document.getElementById('updCheck').onclick=()=>{if(latest)offer(latest);else check(true)};
   document.getElementById('updBack').onclick=()=>askBack();
+  try{if(LAUNCHED){const cb=document.getElementById('updClose');cb.style.display='';cb.onclick=()=>exitApp()}}catch(e){}
   paint();
  }
  window.checkForUpdate=()=>check(true);

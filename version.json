@@ -1,6 +1,6 @@
 {
-  "version": "1.3.38",
-  "notes": "Fix: the Update button now works in the Desktop app. After installing the new ShopBilling.zip once, updates download and install by themselves.",
+  "version": "1.3.39",
+  "notes": "Closing the app now asks the PIN first. The X button is hidden. Close with Setup > Close app, or press Ctrl+Shift+Q.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
