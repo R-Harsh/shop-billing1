@@ -1,6 +1,6 @@
 {
-  "version": "1.3.40",
-  "notes": "Close app now always asks a PIN (your PIN or the Admin PIN) before closing. If no PIN is set, it tells you.",
+  "version": "1.3.41",
+  "notes": "Closing is simple again: press X and the app closes. The PIN-to-close and the extra Close app button were removed.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
