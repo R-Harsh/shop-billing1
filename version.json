@@ -1,6 +1,6 @@
 {
-  "version": "1.3.35",
-  "notes": "Fix: after a refresh on the Season tab (and other tabs) the page was not fully drawn. The saved tab is now opened only after the whole app has finished loading.",
+  "version": "1.3.36",
+  "notes": "Refresh now keeps you on the same tab even when the login screen appears first. The refresh button and F5 no longer show the Leave site box or lock the app.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

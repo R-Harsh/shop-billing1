@@ -624,7 +624,7 @@ function doneCard(s){burst();
  try{if(SYNC.ready)await syncPush()}catch(e){}
  if(busy){if(window.syncNowBtn)syncNowBtn();toast('Synced. Finish the current bill, then press 🔄 again to fully refresh.');return}
  if(SYNC.ready&&typeof unsynced==='function'&&unsynced().total>0){toast('Some changes could not upload yet, so the page was not refreshed. Nothing is lost.');return}
- rb.disabled=true;rb.classList.add('spin');toast('Refreshing...');setTimeout(()=>location.reload(),400)}}
+ rb.disabled=true;rb.classList.add('spin');toast('Refreshing...');setTimeout(()=>hardReload(),400)}}
 $('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  if(t==='lock'){unlocked=false;show('bill');toast('Locked');return}
  if(t==='admin'){adminGate('Open the Admin panel',()=>show('admin'));return}
@@ -3382,7 +3382,7 @@ if(/exitpin/.test(location.hash)){
 window.addEventListener('beforeunload',e=>{
  if(Date.now()<EXITOK)return;
  e.preventDefault();e.returnValue='';
- setTimeout(()=>{if(Date.now()<EXITOK)return;if(myPin()){unlocked=false;try{closeBill()}catch(x){}try{show('bill')}catch(x){}gate(false)}},500)});
+ setTimeout(()=>{if(Date.now()<EXITOK)return;if(myPin()){unlocked=false;try{closeBill()}catch(x){}gate(false)}},500)});
 /* Phone Back button: show the app's own centered "close the app?" box instead of leaving (not used in the Desktop launcher) */
 if(!LAUNCHED){
  try{history.pushState({bf:1},'')}catch(e){}
@@ -3555,8 +3555,8 @@ async function getDb(){let c='';try{c=localStorage.getItem('sb-shop')||''}catch(
  $('syncCode').value=c;
  $('syncMsg').textContent=c?'A shop code is saved. Green dot at the top means this device is connected.':'Not connected. This PC keeps its own bills only.';
  if(window.claude){$('syncMsg').textContent='On the Claude web page the data is already shared through Claude. Shop codes work only in the installed Windows app.';$('syncOn').disabled=true;$('syncOff').disabled=true}
- $('syncOn').onclick=()=>{const v=$('syncCode').value.trim();if(!v){toast('Enter your shop code');return}try{localStorage.setItem('sb-shop',v)}catch(e){}location.reload()};
- $('syncOff').onclick=()=>{try{localStorage.removeItem('sb-shop')}catch(e){}location.reload()};
+ $('syncOn').onclick=()=>{const v=$('syncCode').value.trim();if(!v){toast('Enter your shop code');return}try{localStorage.setItem('sb-shop',v)}catch(e){}hardReload()};
+ $('syncOff').onclick=()=>{try{localStorage.removeItem('sb-shop')}catch(e){}hardReload()};
  window.syncUi=function(){if(window.claude)return;const on=$('syncOn'),off=$('syncOff'),inp=$('syncCode');if(!on)return;
   let sv='';try{sv=localStorage.getItem('sb-shop')||''}catch(e){}
   const m=SYNC.mode,ok=!!sv&&m==='cloud',wait=!!sv&&!m;
@@ -3854,7 +3854,7 @@ $('reset').onclick=openResetMenu;
   if(rc||SYNC.ready||SYNC.mode!=='local'||window.claude)return;const c=code();if(!c||!navigator.onLine)return;rc=true;
   try{if(await makeDb(c).verify()){
     if(auto&&(cart.length||EDITNO||($('modal')&&$('modal').style.display==='flex')))trk('warn','Internet is back. Finish the current bill, then tap Sync now to connect.','net');
-    else{trk('ok','Internet is back. Reconnecting to the database…','net');setTimeout(()=>location.reload(),700);return}}
+    else{trk('ok','Internet is back. Reconnecting to the database…','net');setTimeout(()=>hardReload(),700);return}}
    else trk('bad','Internet found but the database did not answer yet. Will retry.','db')}
   catch(e){trk('bad','Could not reach the database yet. Will retry.','db')}
   rc=false}
@@ -4163,18 +4163,26 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
   db.doc('meta/set').onSnapshot(onMeta,er);
   db.collection('log').orderBy('t','desc').limit(100).onSnapshot(s=>{SYNC.log=s.docs.map(x=>x.data());if($('t-log').classList.contains('on'))renderLog()},er)}catch(e){if(!authed&&!SYNC.ready&&!GATE.on)start()}})();
 /* Refresh keeps you on the same tab (locked tabs and the Admin panel still ask first) */
-{const _sv=show;show=function(t){_sv(t);const pr=document.getElementById('tabPre');if(pr)pr.remove();try{sessionStorage.setItem('sb-tab',t)}catch(e){}}}
+let TABPEND=false;
+{const _sv=show;show=function(t){_sv(t);const pr=document.getElementById('tabPre');if(pr)pr.remove();if(TABPEND&&t==='bill')return;try{sessionStorage.setItem('sb-tab',t)}catch(e){}}}
 if(SB_TAB0&&SB_TAB0!=='bill'&&SB_TAB0!=='admin'&&SB_TAB0!=='lock'){
+ TABPEND=true;
  const okTab=t=>$('t-'+t)&&!tabNeedsAdmin(t)&&!(myPin()&&LOCKED.includes(t)&&(PINNED.includes(t)||!unlocked));
+ $('nav').addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset.t;if(t&&t!=='lock')TABPEND=false},true);
  /* run when ALL scripts have loaded (some tabs, like Season, get their charts from scripts further down the file) */
  const doRestore=()=>{
-  if(okTab(SB_TAB0))show(SB_TAB0);else show('bill'); /* straight to the saved tab, the Bill page is never shown first */
-  let n=0,w=setInterval(()=>{n++;if(n>150){clearInterval(w);return}
-   if(GATE.on)return;if(!(authed||n>12))return;clearInterval(w);
+  if(okTab(SB_TAB0))show(SB_TAB0);else{TABPEND=false;show('bill')} /* straight to the saved tab, the Bill page is never shown first */
+  let n=0;const w=setInterval(()=>{n++;
+   if(!TABPEND){clearInterval(w);return}
+   if(GATE.on)return;if(!(authed||n>12))return; /* wait for the login screen as long as it takes */
    const t=SB_TAB0,el=$('t-'+t);
-   if(!okTab(t)){if(el&&el.classList.contains('on'))show('bill');return}
-   if($('t-bill').classList.contains('on')&&$('modal').style.display!=='flex')show(t)},400)};
+   if(!okTab(t)){TABPEND=false;clearInterval(w);if(el&&el.classList.contains('on'))show('bill');return}
+   if(el&&el.classList.contains('on')){TABPEND=false;clearInterval(w);return}
+   if($('modal').style.display!=='flex'){show(t);TABPEND=false;clearInterval(w)}},400)};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',doRestore);else doRestore()}
+/* A refresh is not a close: no "Leave site?" box and no lock */
+function hardReload(){EXITOK=Date.now()+15000;location.reload()}
+document.addEventListener('keydown',e=>{if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&(e.key==='r'||e.key==='R')))EXITOK=Date.now()+5000},true);
 </script>
 <script>
 /* ===== extras: sales charts, staff sales report ===== */
@@ -4466,7 +4474,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.35';                                   /* change this on every release */
+ const APP_VERSION='1.3.36';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4672,7 +4680,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
   await wait(450);
   if(rb)modal({kind:'ok',title:'Previous version restored',body:'Restarting the app…'});
   else modal({kind:'ok',title:'Update installed',chip:['v'+APP_VERSION,'v'+info.version],body:'Restarting the app…'});
-  setTimeout(()=>location.reload(),1700);
+  setTimeout(()=>hardReload(),1700);
  }
 
  /* ---------- go back to the previous version ---------- */
