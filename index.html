@@ -477,7 +477,8 @@ S.items.forEach(i=>{if(i.k===undefined)i.k=Math.round(i.p*.62)});S.exp=S.exp||[]
 let cart=[];let EDITNO=null;const IEDIT=new Set();
 const $=id=>document.getElementById(id);
 const editSale=()=>EDITNO?S.sales.find(x=>x.no==EDITNO):null;
-const bp=it=>S.set&&S.set.surge&&it.s<=(S.set.low||0)?Math.round(it.p*(1+(S.set.spct||15)/100)):it.p;
+const clrP=it=>{const c=S.set&&S.set.clr;return c&&c.on&&c.p&&c.p[it.c]!=null&&it.s>0?Math.min(+c.p[it.c],it.p):null};
+const bp=it=>{const q=clrP(it);if(q!=null)return q;return S.set&&S.set.surge&&it.s<=(S.set.low||0)?Math.round(it.p*(1+(S.set.spct||15)/100)):it.p};
 const gi=l=>{const it=S.items.find(i=>i.c===l.c);return{c:l.c,n:it?it.n:(l.n||l.c),p:l.p!==undefined?l.p:(it?bp(it):0),k:l.k!==undefined?l.k:(it?it.k:0),s:it?it.s:0}};
 const qSum=(arr,c)=>arr.reduce((a,x)=>x.c===c?a+(+x.q||0):a,0);
 /* ===== pack pricing: it.pk={n:pieces in a pack, pp:pack price or null(=n x normal price)} ===== */
@@ -4471,7 +4472,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.45';                                   /* change this on every release */
+ const APP_VERSION='1.3.47';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4827,8 +4828,8 @@ new MutationObserver(sort).observe(ts,{childList:true});
   const rows=S.items.filter(i=>i.s>0).map(i=>{
    const so=sold[i.c]||0,st=so/(so+i.s);
    let d=st>=.75?0:Math.min(mx,Math.round(mx*(1-st)/5)*5);
-   const lim=i.p>0?Math.max(0,Math.floor((i.p-i.k)/i.p*100)):0,dd=Math.min(d,lim),cp=Math.round(i.p*(1-dd/100));
-   return{n:i.n,s:i.s,so,st,cost:i.s*i.k,val:i.s*i.p,d:dd,capped:dd<d,cp,back:i.s*cp}});
+   const ov=((S.set||{}).clrPct||{})[i.c],man=ov!=null&&ov!=='',lim=i.p>0?Math.max(0,Math.floor((i.p-i.k)/i.p*100)):0,dd=man?Math.max(0,Math.min(100,+ov||0)):Math.min(d,lim),cp=Math.round(i.p*(1-dd/100));
+   return{c:i.c,n:i.n,s:i.s,so,st,cost:i.s*i.k,val:i.s*i.p,d:dd,capped:!man&&dd<d,man,auto:Math.min(d,lim),cp,below:cp<i.k,back:i.s*cp}});
   rows.sort((a,b)=>b.cost-a.cost||a.n.localeCompare(b.n));
   const sum=f=>rows.reduce((a,r)=>a+f(r),0),left=sum(r=>r.s);
   LO.list=rows;
@@ -4838,12 +4839,13 @@ new MutationObserver(sort).observe(ts,{childList:true});
  function loBody(){
   const b=$('xLoBody');if(!b)return;loCalc();const T=LO.tot,L=LO.list;
   const st=(a,v,cls)=>'<div class="stat'+(cls?' '+cls:'')+'"><span class="muted">'+a+'</span><b>'+v+'</b></div>';
-  if(!L.length){b.innerHTML='<p class="muted">No item has stock left. Nothing to show.</p>';return}
-  b.innerHTML='<div class="stats" style="margin:8px 0">'+st('Items with stock left',T.items)+st('Pieces left',T.left)+st('Value at cost (money stuck)',money(T.cost),'cm-pend')+st('Value at selling price',money(T.val))+st('Sold so far',T.sold+' pcs ('+T.st+'%)')+'</div>'+
+  const CL=(S.set&&S.set.clr)||{},on=!!CL.on,nC=on?Object.keys(CL.p||{}).length:0,ban='<div style="border:2px solid '+(on?'var(--ok)':'var(--line)')+';border-radius:12px;padding:10px 12px;margin:8px 0"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><span>'+(on?'<b style="color:var(--ok)">🏷️ Clearance sale is ON</b><br><small class="muted">Started '+new Date(CL.t).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+', '+new Date(CL.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+'. '+nC+' item'+(nC===1?'':'s')+' are billed at the clearance price on the Bill screen.</small>':'<b>Clearance sale is OFF</b><br><small class="muted">Press Start to bill the items below at their clearance price. The Admin PIN is needed.</small>')+'</span><button class="btn'+(on?'':' alt')+'" id="xLoClr" type="button">'+(on?'⏹ Stop clearance':'▶ Start clearance')+'</button></div></div>';
+  if(!L.length){b.innerHTML=ban+'<p class="muted">No item has stock left. Nothing to show.</p>';return}
+  b.innerHTML=ban+'<div class="stats" style="margin:8px 0">'+st('Items with stock left',T.items)+st('Pieces left',T.left)+st('Value at cost (money stuck)',money(T.cost),'cm-pend')+st('Value at selling price',money(T.val))+st('Sold so far',T.sold+' pcs ('+T.st+'%)')+'</div>'+
    '<div class="scroll"><table class="table"><tr><th>Item</th><th class="r">Left</th><th class="r">Sold</th><th class="r">Sold %</th><th class="r">Value at cost</th><th class="r">Clearance</th><th class="r">Clearance price</th></tr>'+
-   L.map(r=>{const t=tag(r);return '<tr><td>'+esc(r.n)+'<br><small style="color:'+t[1]+';font-weight:600">'+t[0]+'</small></td><td class="r">'+r.s+'</td><td class="r">'+r.so+'</td><td class="r">'+Math.round(r.st*100)+'%</td><td class="r">'+money(r.cost)+'</td><td class="r">'+(r.d?'<b>'+r.d+'% off</b>':'<span class="muted">none</span>')+(r.capped?'<br><small class="muted">kept above cost</small>':'')+'</td><td class="r">'+(r.d?'<b>'+money(r.cp)+'</b>':'-')+'</td></tr>'}).join('')+'</table></div>'+
+   L.map(r=>{const t=tag(r);return '<tr><td>'+esc(r.n)+'<br><small style="color:'+t[1]+';font-weight:600">'+t[0]+'</small></td><td class="r">'+r.s+'</td><td class="r">'+r.so+'</td><td class="r">'+Math.round(r.st*100)+'%</td><td class="r">'+money(r.cost)+'</td><td class="r"><input class="xLoI" data-c="'+esc(r.c)+'" type="number" min="0" max="100" inputmode="decimal" value="'+(r.man?r.d:'')+'" placeholder="'+r.auto+'" title="Type your own clearance %. Leave empty to use the suggestion." style="width:76px;text-align:right"> %'+(r.man?'<br><small class="muted">your choice</small>':r.capped?'<br><small class="muted">kept above cost</small>':'<br><small class="muted">suggested</small>')+(r.below?'<br><small style="color:var(--acc);font-weight:700">below cost</small>':'')+'</td><td class="r">'+(r.d?'<b>'+money(r.cp)+'</b>':'-')+'</td></tr>'}).join('')+'</table></div>'+
    '<p style="margin:8px 0 0">If all leftover pieces sell at the clearance prices you get back <b>'+money(T.back)+'</b>, against <b>'+money(T.cost)+'</b> that you paid. '+(T.back>=T.cost?'You cover your cost.':'You still lose <b style="color:var(--acc)">'+money(T.cost-T.back)+'</b>, but it is better than keeping the stock for a full year.')+'</p>'+
-   '<p class="muted" style="margin:6px 0 0;font-size:13px">The suggested discount is bigger for items that sold less. Items that sold 75% or more get no discount. A clearance price never goes below the base cost. These are suggestions only: prices in your item list do not change.</p>'+
+   '<p class="muted" style="margin:6px 0 0;font-size:13px">You can type your own % for any item (an empty box uses the suggestion).  The suggested discount is bigger for items that sold less. Items that sold 75% or more get no discount. A clearance price never goes below the base cost. The prices in your item list never change. When the clearance sale is ON, the Bill screen uses the clearance prices that were suggested at the moment you pressed Start.</p>'+
    '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="btn alt" id="xLoWa" type="button">Send list on WhatsApp</button><button class="btn alt" id="xLoPdf" type="button">Save as PDF</button></div>'}
  function loUi(){
   const c=$('xLeft');if(!c)return;const sl=seasons();
@@ -4854,9 +4856,21 @@ new MutationObserver(sort).observe(ts,{childList:true});
    '<div id="xLoBody"></div>';
   loBody()}
  const when=()=>LO.tot&&LO.tot.se?LO.tot.se.n:'All bills';
- $('xLeft').onchange=e=>{if(e.target.id==='xLoSea'){LO.sea=e.target.value;loBody()}};
+ $('xLeft').onchange=e=>{const t=e.target;
+  if(t.id==='xLoSea'){LO.sea=t.value;loBody();return}
+  if(t.classList&&t.classList.contains('xLoI')){
+   const c=t.dataset.c,v=t.value.trim(),apply=()=>{const m=Object.assign({},S.set.clrPct||{});if(v==='')delete m[c];else m[c]=Math.max(0,Math.min(100,+v||0));S.set.clrPct=m;
+    if(S.set.clr&&S.set.clr.on){loCalc();const r=LO.list.find(x=>x.c===c),pp=Object.assign({},S.set.clr.p);if(r&&r.d>0)pp[c]=r.cp;else delete pp[c];S.set.clr=Object.assign({},S.set.clr,{p:pp})}
+    save();try{renderPicks()}catch(e){}try{renderCart()}catch(e){}loBody()};
+   if(S.set.clr&&S.set.clr.on){loBody();adminGate('The clearance sale is ON. Change the clearance % of this item now? The Bill screen price changes at once.',apply)}else apply()}};
  $('xLeft').oninput=e=>{if(e.target.id==='xLoMax'){LO.max=e.target.value;loBody()}};
+ const refr=()=>{try{renderPicks()}catch(e){}try{renderCart()}catch(e){}loBody()};
  $('xLeft').onclick=e=>{const id=e.target.id;
+  if(id==='xLoClr'){const on=!!(S.set.clr&&S.set.clr.on);
+   if(on){adminGate('Stop the clearance sale? Items go back to their normal price on the Bill screen.',()=>{S.set.clr={on:false,t:0,p:{}};save();refr();toast('Clearance sale stopped')});return}
+   loCalc();const p={};LO.list.forEach(r=>{if(r.d>0)p[r.c]=r.cp});
+   if(!Object.keys(p).length){toast('No item has a clearance discount right now');return}
+   adminGate('Start the clearance sale? '+Object.keys(p).length+' items will be billed at their clearance price on the Bill screen.',()=>{S.set.clr={on:true,t:Date.now(),p};save();refr();toast('Clearance sale started')});return}
   if(id==='xLoWa'){const L=LO.list.slice(0,30);if(!L.length)return;
    openUrl('https://wa.me/?text='+encodeURIComponent('Leftover stock ('+S.set.name+', '+dk(new Date())+'):\n'+L.map(r=>'- '+r.n+': '+r.s+' left'+(r.d?', clearance '+r.d+'% off = Rs '+r.cp:'')).join('\n')+'\nValue at cost: Rs '+Math.round(LO.tot.cost)))}
   else if(id==='xLoPdf'){loCalc();const T=LO.tot,tr=(a,b)=>'<tr><td>'+a+'</td><td class="r">'+b+'</td></tr>';
