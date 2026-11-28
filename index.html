@@ -398,6 +398,7 @@ nav button *{pointer-events:none}
   <p><label>UPI ID (shows a QR code with the exact bill amount)<input id="sUpi" placeholder="shopname@upi" autocomplete="off" autocapitalize="off"></label></p>
   <p><label>Bill greeting / Diwali quote (leave empty to use a different Diwali quote on each bill)<input id="sQuote" maxlength="140" placeholder="May this Diwali bring joy and prosperity to your home"></label></p>
   <p><label>Low-stock level<input id="sLow" type="number" min="0"></label></p>
+  <p><label>Round off the final bill<select id="sRnd"><option value="near">To the nearest rupee (₹100.50 becomes ₹101)</option><option value="down">Always down (₹100.90 becomes ₹100)</option><option value="up">Always up (₹100.10 becomes ₹101)</option><option value="off">No rounding (keep paise)</option></select></label></p><p class="muted" style="margin-top:-6px">The rounding is shown on its own line on the bill as “Round off”.</p>
   <p><label><input id="sSurge" type="checkbox"> Raise price when stock is low</label> <label>by % <input id="sSpct" type="number" min="0" style="width:70px"></label> <button class="btn sm" id="sSurgeSave">Save</button></p>
   <p class="muted">When an item's stock is at the low-stock level or less, new bills charge the higher price. The saved item price does not change.</p>
   </div>
@@ -512,6 +513,7 @@ function backupUi(){
  if(saveFail){n.style.display='';n.style.borderColor='var(--acc)';n.style.color='var(--acc)';n.textContent='Warning: data could not be saved on this device. Storage may be full or blocked (private mode?). Take a backup now in Setup and do not rely on this device.';return}
  const need=last>(t||0)&&dk(last)===dk(Date.now())&&new Date().getHours()>=20;
  if(need){n.style.display='';n.style.borderColor='var(--warn)';n.style.color='var(--warn)';n.textContent='No backup of today\u2019s bills yet'+(t?' (last backup: '+when+')':'')+'. Go to Setup and press Save backup file.'}else n.style.display='none'}
+const rndAmt=x=>{const m=(typeof S!=='undefined'&&S&&S.set&&S.set.rnd)||'near';return m==='down'?Math.floor(x+1e-9):m==='up'?Math.ceil(x-1e-9):m==='off'?Math.round(x*100)/100:Math.round(x)};
 const money=n=>'₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const fp=(d,s)=>s?+(d/s*100).toFixed(1):0;
@@ -731,7 +733,7 @@ function calc(){
  const G=gst(),base=sub-d,r=G.rate/100;let gs=0,total=base;
  if(G.mode==='excl'){gs=base*r;total=base+gs}
  else if(G.mode==='incl'){gs=base-base/(1+r)}
- const rt=Math.round(total);const pv=parseFloat($('paid').value)||0;const adj=(pv>0&&pv<rt)?rt-pv:0;
+ const rt=rndAmt(total);const pv=parseFloat($('paid').value)||0;const adj=(pv>0&&pv<rt)?rt-pv:0;
  return{sub,d,gst:gs,total:rt-adj,round:rt-total,adj};
 }
 /* ===== QR code encoder (qrcode-terminal / Kazuhiko Arase, MIT licence) ===== */
@@ -2612,7 +2614,7 @@ function ebCalc(){const s=S.sales.find(x=>x.no==EB.no);
  const d=EB.dt==='p'?sub*Math.min(dv,100)/100:Math.min(dv,sub);
  const base=sub-d,r=s.rate/100;let gst=0,total=base;
  if(s.mode==='excl'){gst=base*r;total=base+gst}else if(s.mode==='incl'){gst=base-base/(1+r)}
- const rt=Math.round(total),av=parseFloat(EB.adj)||0,adj=av>0?Math.min(av,rt):0;
+ const rt=rndAmt(total),av=parseFloat(EB.adj)||0,adj=av>0?Math.min(av,rt):0;
  return{sub,d,gst,round:rt-total,adj,total:rt-adj,mode:s.mode,rate:s.rate,old:s.total}}
 function ebTot(){const t=ebCalc(),row=(a,b)=>`<div class="tot"><span>${a}</span><span>${b}</span></div>`;
  $('ebTot').innerHTML=row('Subtotal',money(t.sub))+(t.d?row('Discount ('+fp(t.d,t.sub)+'%)','−'+money(t.d)):'')+(t.mode!=='none'?row('GST '+t.rate+'%'+(t.mode==='incl'?' (included)':''),money(t.gst)):'')+(Math.abs(t.round)>=.005?row('Round off',money(t.round)):'')+(t.adj?row('Short-pay adjustment','−'+money(t.adj)):'')
@@ -3375,9 +3377,8 @@ function exitApp(){ask('Are you sure you want to close the app?','Yes, close',ex
 function exitPinBox(){
  $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>The app was closed without a PIN</b><br><span class="muted">It has been opened again. Enter your PIN to close it, or continue working.</span></p><div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn" id="exPin">Enter PIN to close</button><button class="btn alt" id="exStay">Continue working</button></div>';
  $('modal').style.display='flex';$('exPin').onclick=exitPin;$('exStay').onclick=closeBill}
-if(/exitpin/.test(location.hash)){
- try{history.replaceState(null,'',location.href.replace(/#.*$/,'')+'#app')}catch(e){}
- let n=0;const w=setInterval(()=>{n++;if(GATE.on){clearInterval(w);return}if(authed||n>30){clearInterval(w);if(!GATE.on)exitPinBox()}},500)}
+/* An old launcher may open the app again after X: close it again at once (no PIN box) */
+if(/exitpin/.test(location.hash)){try{history.replaceState(null,'',location.href.replace(/#.*$/,'')+'#app')}catch(e){}setTimeout(exitDone,300)}
 /* Phone Back button: show the app's own centered "close the app?" box instead of leaving (not used in the Desktop launcher) */
 if(!LAUNCHED){
  try{history.pushState({bf:1},'')}catch(e){}
@@ -4159,7 +4160,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)abRun(false
   db.collection('log').orderBy('t','desc').limit(100).onSnapshot(s=>{SYNC.log=s.docs.map(x=>x.data());if($('t-log').classList.contains('on'))renderLog()},er)}catch(e){if(!authed&&!SYNC.ready&&!GATE.on)start()}})();
 /* Refresh keeps you on the same tab (locked tabs and the Admin panel still ask first) */
 let TABPEND=false;
-{const _sv=show;show=function(t){_sv(t);const pr=document.getElementById('tabPre');if(pr)pr.remove();if(TABPEND&&t==='bill')return;try{sessionStorage.setItem('sb-tab',t)}catch(e){}}}
+{const _sv=show;show=function(t){if(TABPEND&&t==='bill')return; /* while a refresh is being restored, never flash the Bill page */
+ _sv(t);const pr=document.getElementById('tabPre');if(pr)pr.remove();try{sessionStorage.setItem('sb-tab',t)}catch(e){}}}
 if(SB_TAB0&&SB_TAB0!=='bill'&&SB_TAB0!=='admin'&&SB_TAB0!=='lock'){
  TABPEND=true;
  const okTab=t=>$('t-'+t)&&!tabNeedsAdmin(t)&&!(myPin()&&LOCKED.includes(t)&&(PINNED.includes(t)||!unlocked));
@@ -4469,7 +4471,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.41';                                   /* change this on every release */
+ const APP_VERSION='1.3.45';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -4941,6 +4943,77 @@ new MutationObserver(sort).observe(ts,{childList:true});
  document.addEventListener('click',e=>{const id=e.target&&e.target.id;
   if(id==='xPlPdf'){const o=$('xPlOv');if(o)o.remove();pdf()}
   else if(id==='xPlWa')wa()});
+})();
+</script>
+<script>
+/* ===== extras: bill search, customer report (Sales tab) + round-off setting ===== */
+(function(){
+ /* ---- round-off setting (Setup) ---- */
+ const rs=$('sRnd');
+ if(rs){
+  rs.onchange=()=>{S.set.rnd=rs.value;save();try{if(typeof renderCart==='function')renderCart()}catch(e){}toast('Round-off saved')};
+  const _ls=loadSetup;loadSetup=function(){_ls();const r=$('sRnd');if(r)r.value=(S.set&&S.set.rnd)||'near'};
+ }
+ const tab=$('t-sales');if(!tab||!$('bills'))return;
+ const SR={q:'',per:'all',view:'top'},bills=$('bills').closest('.card');
+ bills.insertAdjacentHTML('beforebegin',
+  '<div class="card" id="xSrch" style="margin-bottom:12px"><b>🔎 Find a bill</b>'+
+  '<div class="row" style="margin-top:6px;flex-wrap:wrap"><input id="xQ" type="search" autocomplete="off" placeholder="Customer, phone, bill no., date (25/11), item, Cash / UPI, or amount" style="flex:1;min-width:220px"><button class="btn alt sm" id="xQc" type="button">Clear</button></div>'+
+  '<p class="muted" id="xQi" style="margin:6px 0 0;font-size:13px">Searches all bills, old and new. You can type more than one word, for example: <i>ravi upi 25/11</i>.</p></div>');
+ tab.insertAdjacentHTML('beforeend','<div class="card" id="xCust" style="margin-top:12px"></div>');
+ const opt=(v,t,c)=>'<option value="'+v+'"'+(String(c)===String(v)?' selected':'')+'>'+t+'</option>';
+ /* ---- search ---- */
+ function hay(s){
+  const d=new Date(s.t),dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'),y=d.getFullYear(),mn=d.toLocaleString('en-IN',{month:'long'}).toLowerCase();
+  const it=(s.lines||[]).map(l=>l.n).concat((s.free||[]).map(f=>f.n||''));
+  return [bn(s),s.no,s.cust,s.phone,s.by,payTxt(s),s.split?'split':'',s.void?'cancelled':'',s.total,dk(s.t),dd+'/'+mm+'/'+y,dd+'-'+mm+'-'+y,dd+'/'+mm,dd+'-'+mm,(+dd)+' '+mn,(+dd)+' '+mn.slice(0,3),mn,mn.slice(0,3),y,it.join(' ')].join(' | ').toLowerCase()}
+ const toks=q=>q.toLowerCase().replace(/[₹,]/g,'').replace(/\brs\.?\b/g,'').split(/\s+/).filter(Boolean);
+ /* ---- customer report ---- */
+ function crData(){
+  const from=SR.per==='all'?'':(()=>{const d=new Date();d.setDate(d.getDate()-(+SR.per-1));return dk(d)})();
+  const ss=S.sales.filter(s=>!s.void&&(!from||dk(s.t)>=from)),m={},walk={b:0,a:0};let tot=0;
+  ss.forEach(s=>{tot+=s.total;const k=ck(s);if(!k){walk.b++;walk.a+=s.total;return}const c=m[k]=m[k]||{k,n:'',ph:'',b:0,sp:0,lt:0};c.n=s.cust||c.n;c.ph=s.phone||c.ph;c.b++;c.sp+=s.total;c.lt=Math.max(c.lt,s.t)});
+  const cd=custData(),L=Object.values(m).map(c=>({...c,avg:c.sp/c.b,due:Math.max(0,(cd[c.k]||{}).due||0)}));
+  const P=Object.values(cd).filter(c=>c.due>.005).sort((a,b)=>b.due-a.due);
+  return{ss,L,walk,tot,P,owed:P.reduce((a,c)=>a+c.due,0)}}
+ const nm=c=>esc(c.n||c.ph||'(no name)')+(c.n&&c.ph?'<br><small class="muted">'+esc(c.ph)+'</small>':'');
+ function crTable(D){
+  const T=(h,rows)=>rows.length?'<div class="scroll"><table class="table"><tr>'+h+'</tr>'+rows.join('')+'</table></div>':'<p class="muted">Nothing to show yet.</p>';
+  if(SR.view==='pend')return T('<th>#</th><th>Customer</th><th class="r">Bills</th><th class="r">Pending amount</th>',D.P.slice(0,20).map((c,i)=>'<tr><td>'+(i+1)+'</td><td>'+nm(c)+'</td><td class="r">'+c.b+'</td><td class="r"><b style="color:var(--acc)">'+money(c.due)+'</b></td></tr>'));
+  const L=SR.view==='rep'?D.L.filter(c=>c.b>=2).sort((a,b)=>b.b-a.b||b.sp-a.sp):D.L.slice().sort((a,b)=>b.sp-a.sp);
+  return T('<th>#</th><th>Customer</th><th class="r">Bills</th><th class="r">Total bought</th><th class="r">Average bill</th><th class="r">Pending</th>',L.slice(0,20).map((c,i)=>'<tr><td>'+(i+1)+'</td><td>'+nm(c)+(c.b>=2?' <small style="color:var(--ok);font-weight:700">Repeat</small>':'')+'</td><td class="r">'+c.b+'</td><td class="r">'+money(c.sp)+'</td><td class="r">'+money(c.avg)+'</td><td class="r">'+(c.due?'<b style="color:var(--acc)">'+money(c.due)+'</b>':'-')+'</td></tr>'))}
+ const PL={all:'All bills','30':'Last 30 days','7':'Last 7 days','1':'Today'},VL={top:'Top customers',rep:'Repeat buyers',pend:'Pending balances'};
+ function custUi(){
+  const c=$('xCust'),D=crData(),rep=D.L.filter(x=>x.b>=2).length,st=(a,v,x)=>'<div class="stat"><span class="muted">'+a+'</span><b>'+v+'</b>'+(x?'<br><small class="muted">'+x+'</small>':'')+'</div>';
+  c.innerHTML='<div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><b style="font-size:18px">👥 Customer report</b><select id="xCrP" style="width:auto">'+Object.keys(PL).map(k=>opt(k,PL[k],SR.per)).join('')+'</select></div>'+
+   '<p class="muted" style="margin:6px 0">Customers are counted by mobile number, or by name when there is no number. Pending balances are always the full amount still due.</p>'+
+   '<div class="stats" style="margin:8px 0">'+st('Bills',D.ss.length,D.walk.b?D.walk.b+' without a customer ('+money(D.walk.a)+')':'')+st('Average bill',money(D.ss.length?D.tot/D.ss.length:0))+st('Customers',D.L.length)+st('Repeat buyers',rep,D.L.length?Math.round(rep/D.L.length*100)+'% of customers':'')+st('Pending balance',money(D.owed),D.P.length+' customer'+(D.P.length===1?'':'s'))+'</div>'+
+   '<div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><select id="xCrV" style="width:auto">'+Object.keys(VL).map(k=>opt(k,VL[k],SR.view)).join('')+'</select><button class="btn alt sm" id="xCrPdf" type="button">Save as PDF</button></div>'+crTable(D)}
+ $('xCust').onchange=e=>{if(e.target.id==='xCrP'){SR.per=e.target.value;custUi()}else if(e.target.id==='xCrV'){SR.view=e.target.value;custUi()}};
+ $('xCust').onclick=e=>{if(e.target.id!=='xCrPdf')return;const D=crData();
+  $('repPrint').innerHTML='<h2 style="margin:0">'+esc(S.set.name)+'</h2><div>Customer report: '+VL[SR.view]+' ('+PL[SR.per]+') · '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+'</div>'+
+   '<table><tr><th>Bills</th><th class="r">Average bill</th><th class="r">Customers</th><th class="r">Repeat buyers</th><th class="r">Pending balance</th></tr><tr><td>'+D.ss.length+'</td><td class="r">'+money(D.ss.length?D.tot/D.ss.length:0)+'</td><td class="r">'+D.L.length+'</td><td class="r">'+D.L.filter(x=>x.b>=2).length+'</td><td class="r">'+money(D.owed)+'</td></tr></table>'+crTable(D);
+  document.body.className='pr-rep';doPrint('customer-report-'+dk(new Date()))};
+ /* ---- hook into the Sales tab ---- */
+ const _rs=renderSales;
+ renderSales=function(){
+  const q=SR.q.trim(),el=$('sDate'),keep=el.value;
+  if(q)el.value='';
+  try{_rs()}finally{if(q)el.value=keep}
+  const rows=[...$('bills').querySelectorAll('tr[data-v]')];
+  if(q){
+   const tk=toks(q),by=new Map(S.sales.map(s=>[String(s.no),s]));let n=0,tot=0;
+   rows.forEach(r=>{const s=by.get(r.dataset.v),ok=!!s&&tk.every(t=>hay(s).includes(t));r.style.display=ok?'':'none';if(ok){n++;if(!s.void)tot+=s.total}});
+   if(!n)$('bills').insertAdjacentHTML('beforeend','<p class="muted">No bill matches “'+esc(q)+'”.</p>');
+   $('billsT').textContent='Search results';
+   $('sInfo').textContent='Search is on: showing matching bills from all dates. The boxes above show today.';
+   $('xQi').innerHTML=n?'<b>'+n+'</b> bill'+(n>1?'s':'')+' found. Total of these bills: <b>'+money(tot)+'</b> (cancelled bills not counted).':'No bill found. Try fewer words.';
+  }else $('xQi').textContent='Searches all bills, old and new. You can type more than one word, for example: ravi upi 25/11.';
+  custUi()};
+ let tm=null;
+ $('xQ').oninput=e=>{SR.q=e.target.value;clearTimeout(tm);tm=setTimeout(renderSales,150)};
+ $('xQc').onclick=()=>{SR.q='';$('xQ').value='';renderSales()};
+ $('sDate').onchange=$('sDate').oninput=()=>renderSales();
 })();
 </script>
 </body></html>
