@@ -1,6 +1,6 @@
 {
-  "version": "1.3.30",
-  "notes": "Sales tab: new 'Sales of date' picker (with previous/next day, Today and All bills buttons) to see the bills, totals and items sold of one particular date.",
+  "version": "1.3.31",
+  "notes": "Sales tab: future dates can no longer be selected in the 'Sales of date' picker.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
