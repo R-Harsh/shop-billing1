@@ -1,6 +1,6 @@
 {
-  "version": "1.3.47",
-  "notes": "New: set the clearance % for each item. New: Start/Stop clearance sale button (Admin PIN) in Leftover stock report. New in Sales: Find a bill (search), Customer report. New in Setup: Round off setting.",
+  "version": "1.3.48",
+  "notes": "Close the day: a closed day is now locked (cannot be closed again or changed) and its report can be downloaded later from 'Previous close reports'. The Windows app can now update itself.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }

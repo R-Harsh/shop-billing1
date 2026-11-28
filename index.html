@@ -2565,7 +2565,7 @@ function viewBill(no){
  $('mWa').onclick=()=>sendPdf(s,$('mPhone').value);$('mImg').onclick=()=>sendImg(s,$('mPhone').value);
  if($('mEdit'))$('mEdit').onclick=()=>openEdit(s.no);
  if($('mRestore'))$('mRestore').onclick=()=>restoreBill(s.no);
- if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});(s.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s+=f.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
+ if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;if(dayLocked(dk(s.t))){toast(LOCKMSG);return}s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});(s.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s+=f.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
 /* ===== edit a saved bill ===== */
 let EB=null;
 function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
@@ -2573,6 +2573,7 @@ function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
 function ebAvail(c){const s=S.sales.find(x=>x.no==EB.no),it=find(c);if(!it)return Infinity;return it.s+qSum(s.lines,c)}
 function editBill(no){
  const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
+ if(dayLocked(dk(s.t))){toast(LOCKMSG);return}
  let dt='a',dv=s.d?String(s.d):'';
  if(s.d){const p=fp(s.d,s.sub);if(Math.abs(s.sub*Math.min(p,100)/100-s.d)<.5){dt='p';dv=String(p)}}
  EB={no,L:s.lines.map(l=>({c:l.c,n:l.n,p:l.p,k:l.k,q:l.q})),dt,dv,adj:s.adj?String(s.adj):''};
@@ -2649,6 +2650,7 @@ $('addPay').onchange=()=>$('addPay').classList.remove('need');
 function resetForm(){document.querySelectorAll('input[name=addpay]').forEach(r=>r.checked=false);$('addPay').classList.remove('need');$('disc').value='';$('paid').value='';$('cust').value='';$('phone').value='';$('discType').value='p';document.querySelectorAll('input[name=pay]').forEach(r=>r.checked=false)}
 function loadEdit(no){
  const s=S.sales.find(x=>x.no==no);if(!s||s.void){toast('This bill cannot be edited');return}
+ if(dayLocked(dk(s.t))){toast(LOCKMSG);return}
  closeBill();EB=null;
  if(cart.length&&!EDITNO){S.held.push({cart,disc:$('disc').value,paid:$('paid').value,dt:$('discType').value,cust:$('cust').value,phone:$('phone').value});save();renderHeld();toast('Your unfinished bill was put on Hold')}
  EDITNO=s.no;resetForm();$('eWhy').value='';$('eWhy').style.borderColor='';
@@ -2769,8 +2771,9 @@ $('srPdf').onclick=()=>{const[,,a,b]=srRange(),st=S.set,fm=d=>new Date(d+'T00:00
  $('repPrint').innerHTML=`<h2 style="margin:0">${esc(st.name)}</h2><div>Staff sales report: ${fm(a)}${a===b?'':' to '+fm(b)}</div>`+staffHtml();
  document.body.className='pr-rep';doPrint('staff-report-'+a+(a===b?'':'-to-'+b))};
 $('eAdd').onclick=()=>{const n=$('eName').value.trim(),a=parseFloat($('eAmt').value);if(!n||!(a>0)){toast('Enter a name and an amount');return}
+ if(dayLocked(CB.day||dk(new Date()))){toast(LOCKMSG);return}
  S.exp.push({id:Date.now(),d:CB.day||dk(new Date()),n,a});save();$('eName').value='';$('eAmt').value='';renderCash();toast('Expense added: '+money(a))};
-$('eList').onclick=e=>{const i=e.target.dataset.e;if(!i)return;S.exp=S.exp.filter(x=>String(x.id)!==i);save();renderCash()};
+$('eList').onclick=e=>{const i=e.target.dataset.e;if(!i)return;{const x=S.exp.find(y=>String(y.id)===i);if(x&&dayLocked(x.d)){toast(LOCKMSG);return}}S.exp=S.exp.filter(x=>String(x.id)!==i);save();renderCash()};
 $('rPdf').onclick=()=>{const key=$('rDate').value||dk(new Date()),st=S.set;
  $('repPrint').innerHTML=`<h2 style="margin:0">${esc(st.name)}</h2><div>${st.lic?'Licence: '+esc(st.lic)+'. ':''}Day report for ${new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>`+repHtml(key);
  document.body.className='pr-rep';doPrint('day-report-'+key)};
@@ -3891,6 +3894,7 @@ function cbRun(all){
  keys.forEach(d=>{const r=all[d]||{net:0,flow:0,sav:0,savAfter:0},open=r.start!==undefined?r.start:prev,exp=open+r.net,expCount=r.end!==undefined?open+r.flow-(r.sav-r.savAfter):exp,close=r.end!==undefined?r.end-r.savAfter:exp;run[d]={carry:prev,open,exp,expCount,close};prev=close});
  return run}
 function cbSet(type){
+ if(dayLocked(CB.day)){toast(LOCKMSG);return}
  const all=cbAll(),run=cbRun(all),r=run[CB.day],d=all[CB.day]||{},isS=type==='start';
  const pre=isS?(d.start!==undefined?d.start:r.carry):r.exp;
  const ex=isS?'Carried over from yesterday: '+money(r.carry):'The app expects: '+money(r.exp);
@@ -3902,6 +3906,7 @@ function cbSet(type){
   save();closeBill();renderCash();toast(isS?'Day start cash saved: '+money(v):'Day end cash saved: '+money(v))}}
 function cbSavings(){return S.pays.filter(p=>p.cb==='save').reduce((a,p)=>a+p.a,0)}
 function cbSave(){
+ if(dayLocked(CB.day)){toast(LOCKMSG);return}
  const all=cbAll(),run=cbRun(all),R=run[CB.day],d=all[CB.day]||{},cur=R.close,keep0=R.open;
  $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Add to savings</b><br><span class="muted">Keep your float in the drawer and move the rest to savings.</span></p><p style="margin:0 0 8px">Cash in drawer now: <b>'+money(cur)+'</b></p><label>Keep in drawer for tomorrow ₹<input id="svKeep" type="number" min="0" value="'+keep0+'" style="margin-top:4px"></label><p style="margin:10px 0;font-size:18px">Move to savings: <b id="svAmt"></b></p><div class="row"><button class="btn" id="svOk">Save to savings</button><button class="btn alt" id="svNo">Cancel</button></div>';
  $('modal').style.display='flex';$('svNo').onclick=closeBill;
@@ -3936,12 +3941,12 @@ function renderCash(){
  c.querySelectorAll('[name=cbt]').forEach(r=>r.onchange=()=>{CB.type=r.value;$('cbWhy').innerHTML=CB_WHY[CB.type].map(w=>'<option>'+w+'</option>').join('');cbNoteUi()});
  const cbNoteUi=()=>{const o=$('cbWhy').value==='Other',n=$('cbNote');n.placeholder=o?'Note (required)':'Note (optional)';n.style.borderColor=o?'var(--acc)':''};
  $('cbWhy').onchange=cbNoteUi;
- $('cbAdd').onclick=()=>{const a=parseFloat($('cbAmt').value);if(!(a>0)){toast('Enter the amount');return}
+ $('cbAdd').onclick=()=>{if(dayLocked(CB.day)){toast(LOCKMSG);return}const a=parseFloat($('cbAmt').value);if(!(a>0)){toast('Enter the amount');return}
   if($('cbWhy').value==='Other'&&!$('cbNote').value.trim()){toast('Please write a note when the reason is Other');$('cbNote').focus();cbNoteUi();return}
   const t=(document.querySelector('[name=cbt]:checked')||{}).value||'out';
   S.pays.push({t:Date.now(),cb:t,a,why:$('cbWhy').value,note:$('cbNote').value.trim(),dd:CB.day,by:(window.SYNC&&SYNC.who)||''});
   save();renderCash();toast(t==='in'?'Money added: '+money(a):'Money taken out: '+money(a))};
- c.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{const x=S.pays.find(p=>p.cb&&String(p.t)===b.dataset.cd);if(!x)return;
+ c.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{const x=S.pays.find(p=>p.cb&&String(p.t)===b.dataset.cd);if(!x)return;if(dayLocked(x.dd||dk(x.t))){toast(LOCKMSG);return}
   adminGate('Delete this entry? '+(x.cb==='in'?'Added ':x.cb==='save'?'Moved to savings ':'Taken out ')+money(x.a)+(x.why?' ('+x.why+')':'')+'.',()=>{const i=S.pays.findIndex(p=>p.cb&&p.t===x.t);if(i<0)return;S.pays.splice(i,1);save();renderCash();toast('Entry deleted')})});
  c.querySelectorAll('[data-cdd]').forEach(r=>r.onclick=()=>{CB.day=r.dataset.cdd;renderCash();window.scrollTo(0,0)});
  $('cbStart').onchange=e=>{S.set.cbStart=Math.max(0,parseFloat(e.target.value)||0);save();renderCash()};
@@ -4010,35 +4015,48 @@ function cdDues(key){
  S.sales.filter(x=>!x.void&&dk(x.t)===key).forEach(x=>{const a=payAmt(x,'Pay later');if(!(a>0))return;
   const k=ck(x)||'__noname',r=m[k]=m[k]||{k,n:'',ph:'',today:0};r.today+=a;r.n=r.n||x.cust||'';r.ph=r.ph||x.phone||''});
  return Object.values(m).map(r=>{const c=cd[r.k];r.due=c?c.due:r.today;if(c){r.n=c.n||r.n;r.ph=c.ph||r.ph}return r}).filter(r=>r.due>0)}
+const dayLocked=k=>!!((S.set&&S.set.dayClosed)||{})[k];
+const LOCKMSG='This day is closed, so it cannot be changed.';
+function cdList(cur){
+ const m=S.set.dayClosed||{},ks=Object.keys(m).sort().reverse();if(!ks.length)return '';
+ const fmt=k=>new Date(k+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),tm=t=>new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+ return '<div style="margin-top:14px"><b>Previous close reports</b> <span class="muted">A closed day is locked. It cannot be closed again or changed.</span></div><div class="scroll" style="max-height:220px"><table class="table"><tr><th>Date</th><th>Closed</th><th></th></tr>'+
+  ks.slice(0,90).map(k=>'<tr'+(k===cur?' style="background:var(--line)"':'')+'><td>'+fmt(k)+'</td><td class="muted">'+tm(m[k].t)+(m[k].by?' &middot; '+esc(m[k].by):'')+'</td><td class="r"><button class="btn alt sm" data-clv="'+k+'" type="button">View</button> <button class="btn alt sm" data-cld="'+k+'" type="button">Download PDF</button></td></tr>').join('')+'</table></div>'}
+function cdDownload(key){
+ const c=(S.set.dayClosed||{})[key];if(!c)return;
+ const stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing report for '+fm+'</div><div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>'+(c.rep||cdHtml(key,c.v));
+ closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)}
 function cdOpen(key){
  if(tabNeedsAdmin('report')&&!key&&!CD.unl){adminGate('Admin PIN needed to see the day summary and profit',()=>{CD.unl=true;cdOpen()});return}
  CD.day=key||CD.day||dk(new Date());if(!key)CD.day=dk(new Date());cdPaint()}
 function cdCurBill(key){return typeof cart!=='undefined'&&cart.length>0&&key===dk(new Date())}
 function cdPaint(){
  const key=CD.day,today=dk(new Date()),st=(S.set.dayClosed||{})[key],M=money;
- const warn=[],curBill=cdCurBill(key);
- if((S.held||[]).length)warn.push((S.held||[]).length+' bill'+(S.held.length>1?'s are':' is')+' still on hold');
- try{if(window.sheetOn&&sheetOn()&&sheetPending()>0)warn.push(sheetPending()+' bill(s) not yet sent to Google Sheet')}catch(e){}
- const{d,R}=cdCash(key),dues=cdDues(key),dueTot=dues.reduce((a,r)=>a+r.due,0);
+ const warn=[],curBill=!st&&cdCurBill(key);
+ if(!st&&(S.held||[]).length)warn.push((S.held||[]).length+' bill'+(S.held.length>1?'s are':' is')+' still on hold');
+ try{if(!st&&window.sheetOn&&sheetOn()&&sheetPending()>0)warn.push(sheetPending()+' bill(s) not yet sent to Google Sheet')}catch(e){}
+ const{d,R}=cdCash(key),dues=st?[]:cdDues(key),dueTot=dues.reduce((a,r)=>a+r.due,0);
  $('mBody').style.maxWidth='760px';
  $('mBody').innerHTML='<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:20px">\uD83C\uDF19 Close the day</b><input type="date" id="cdDate" value="'+key+'" max="'+today+'" style="width:auto"></div>'+
-  (st?'<div class="card" style="margin-bottom:10px;border-color:var(--ok);color:var(--ok);font-weight:600">\u2713 Day closed at '+new Date(st.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(st.by?' by '+esc(st.by):'')+'. You can still update it below.</div>':'')+
+  (st?'<div class="card" style="margin-bottom:10px;border-color:var(--ok);color:var(--ok);font-weight:600">\u2713 Day closed at '+new Date(st.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(st.by?' by '+esc(st.by):'')+'. This day is locked. It cannot be closed again or changed.</div>':'')+
   (dues.length?'<div class="card" style="margin-bottom:10px;border-color:var(--acc)"><b style="color:var(--acc)">\u26D4 The day cannot be closed yet. '+dues.length+' customer'+(dues.length>1?'s':'')+' took Pay later and still owe '+M(dueTot)+'.</b><div class="scroll"><table class="table" style="margin:8px 0"><tr><th>Customer</th><th>Mobile</th><th class="r">Pay later today</th><th class="r">Still pending</th></tr>'+dues.map(r=>'<tr><td>'+esc(r.n||'(Name not saved)')+'</td><td>'+esc(r.ph||'-')+'</td><td class="r">'+M(r.today)+'</td><td class="r"><b>'+M(r.due)+'</b></td></tr>').join('')+'</table></div><span class="muted">Collect the money in the Pending Payment tab (Receive). Then come back and close the day.</span><div class="row" style="margin-top:8px"><button class="btn sm" id="cdGo" type="button">Open Pending Payment</button></div></div>':'')+
   (curBill?'<div class="card" style="margin-bottom:10px;border-color:var(--acc)"><b style="color:var(--acc)">\u26D4 The day cannot be closed yet. The current bill on the Bill page is not saved ('+cart.length+' item'+(cart.length>1?'s':'')+' in the cart).</b><div class="muted" style="margin-top:6px">Finish and save the bill, or clear the cart. Then come back and close the day.</div><div class="row" style="margin-top:8px"><button class="btn sm" id="cdBill" type="button">Go to Bill page</button></div></div>':'')+
   (warn.length?'<div class="card" style="margin-bottom:10px;border-color:var(--warn);color:var(--warn);font-weight:600">Before you close: '+esc(warn.join('; '))+'.</div>':'')+
-  '<div id="cdBody">'+cdHtml(key)+'</div>'+
-  '<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
-  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+((dues.length||curBill)?' disabled title="'+(curBill?'Save or clear the current bill first':'Settle all Pay later first')+'"':'')+'>'+(curBill?'\uD83D\uDD12 Save the current bill to close':dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 Close the day')+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>';
+  '<div id="cdBody">'+(st?(st.rep||cdHtml(key,st.v)):cdHtml(key))+'</div>'+
+  (st?'<div class="card" style="margin:8px 0">Cash counted at closing: <b>'+M(st.v!==undefined?st.v:(d.end||0))+'</b> <span class="muted">(saved and locked)</span></div><div class="row" style="flex-wrap:wrap"><button class="btn" id="cdPdf" type="button">Download this report (PDF)</button><button class="btn alt" id="cdNo" type="button">Back</button></div>':'<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
+  '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+((dues.length||curBill)?' disabled title="'+(curBill?'Save or clear the current bill first':'Settle all Pay later first')+'"':'')+'>'+(curBill?'\uD83D\uDD12 Save the current bill to close':dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 Close the day')+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>')+cdList(key);
  $('modal').style.display='flex';
  $('cdNo').onclick=closeBill;
+ document.querySelectorAll('[data-clv]').forEach(b=>b.onclick=()=>{CD.day=b.dataset.clv;cdPaint()});document.querySelectorAll('[data-cld]').forEach(b=>b.onclick=()=>cdDownload(b.dataset.cld));
  if($('cdGo'))$('cdGo').onclick=()=>{closeBill();show('cust')};
  if($('cdBill'))$('cdBill').onclick=()=>{closeBill();show('bill')};
  $('cdDate').onchange=e=>{CD.day=e.target.value||today;cdPaint()};
- $('cdCash').oninput=()=>{const v=parseFloat($('cdCash').value);$('cdBody').innerHTML=cdHtml(key,v>=0?v:undefined)};
- $('cdPdf').onclick=()=>{const v=parseFloat($('cdCash').value),stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),c=(S.set.dayClosed||{})[key];
+ if($('cdCash'))$('cdCash').oninput=()=>{const v=parseFloat($('cdCash').value);$('cdBody').innerHTML=cdHtml(key,v>=0?v:undefined)};
+ $('cdPdf').onclick=()=>{if(st){cdDownload(key);return}const v=parseFloat($('cdCash').value),stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),c=(S.set.dayClosed||{})[key];
   $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing summary for '+fm+'</div>'+(c?'<div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>':'')+cdHtml(key,v>=0?v:undefined);
   closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)};
- $('cdOk').onclick=()=>{if(cdCurBill(key)){toast('Save or clear the current bill first');cdPaint();return}
+ if($('cdOk'))$('cdOk').onclick=()=>{if((S.set.dayClosed||{})[key]){toast('This day is already closed');return}if(cdCurBill(key)){toast('Save or clear the current bill first');cdPaint();return}
   if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
   const v=parseFloat($('cdCash').value);
   if($('cdCash').value.trim()===''||!(v>=0)){toast('Enter the cash counted in the drawer. It is required to close the day');$('cdCash').focus();$('cdCash').style.borderColor='var(--acc)';return}
@@ -4055,9 +4073,12 @@ function cdConfirm(key,v){
  const go=()=>{if($('ccPin').value!==pin){$('ccMsg').textContent='Wrong PIN, try again';$('ccPin').value='';$('ccPin').focus();return}
   if(cdCurBill(key)){toast('Save or clear the current bill first');cdPaint();return}
   if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
+  if((S.set.dayClosed||{})[key]){toast('This day is already closed');cdPaint();return}
   S.pays=S.pays.filter(x=>!(x.cb==='end'&&(x.dd||dk(x.t))===key));S.pays.push({t:Date.now(),cb:'end',a:v,dd:key,by:who});
-  const m=S.set.dayClosed=S.set.dayClosed||{};m[key]={t:Date.now(),by:who};
+  const m=S.set.dayClosed=S.set.dayClosed||{};let rep='';try{rep=cdHtml(key,v)}catch(e){}
+  m[key]={t:Date.now(),by:who,v,rep};
   const ks=Object.keys(m).sort();while(ks.length>120)delete m[ks.shift()];
+  ks.slice(0,-31).forEach(k=>{if(m[k])delete m[k].rep});
   save();if(typeof renderCash==='function')renderCash();$('mBody').style.maxWidth='760px';cdPaint();toast('Day closed: '+new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}))};
  $('ccYes').onclick=go;$('ccPin').onkeydown=e=>{if(e.key==='Enter')go()}}
 $('closeDayBtn').onclick=()=>{CD.unl=false;cdOpen()};
@@ -4472,7 +4493,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.47';                                   /* change this on every release */
+ const APP_VERSION='1.3.48';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
