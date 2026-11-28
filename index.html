@@ -3367,9 +3367,9 @@ function exitDone(){
  document.title='BF-EXIT-OK'; /* the Desktop launcher sees this and closes the window without opening it again */
  setTimeout(()=>{try{window.close()}catch(e){}},900);
  setTimeout(()=>{$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>You can close the app now</b><br><span class="muted">This window could not close by itself. Close it with the X button at the top.</span></p><div class="row"><button class="btn" id="exOk">OK</button></div>';$('modal').style.display='flex';$('exOk').onclick=closeBill},2500)}
-function exitPin(){const p=myPin();
- if(!p||!SYNC.who){exitDone();return}
- pinBox('Enter your PIN to close',SYNC.who+', enter your PIN','Close app',(v,M)=>{if(v===p)exitDone();else{M('Wrong PIN');$('apIn').value=''}})}
+function exitPin(){const mine=myPin(),adm=adminPin();
+ if(!mine&&!adm){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>No PIN is set</b><br><span class="muted">Set your PIN or the Admin PIN in Setup so closing the app is protected.</span></p><div class="row"><button class="btn" id="npClose">Close anyway</button><button class="btn alt" id="npNo">Stay</button></div>';$('modal').style.display='flex';$('npClose').onclick=exitDone;$('npNo').onclick=closeBill;return}
+ pinBox('Enter your PIN to close',(SYNC.who?SYNC.who+', enter your PIN':'Enter the PIN')+(adm?' or the Admin PIN':''),'Close app',(v,M)=>{if(v&&(v===mine||v===adm))exitDone();else{M('Wrong PIN');$('apIn').value=''}})}
 function exitApp(){ask('Are you sure you want to close the app?','Yes, close',exitPin)}
 /* The window was closed with X and the launcher opened the app again: ask for the PIN to really close it */
 function exitPinBox(){
@@ -4476,7 +4476,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.39';                                   /* change this on every release */
+ const APP_VERSION='1.3.40';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);

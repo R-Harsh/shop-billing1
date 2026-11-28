@@ -1,6 +1,6 @@
 {
-  "version": "1.3.39",
-  "notes": "Closing the app now asks the PIN first. The X button is hidden. Close with Setup > Close app, or press Ctrl+Shift+Q.",
+  "version": "1.3.40",
+  "notes": "Close app now always asks a PIN (your PIN or the Admin PIN) before closing. If no PIN is set, it tells you.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
