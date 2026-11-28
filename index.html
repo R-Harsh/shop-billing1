@@ -635,8 +635,8 @@ $('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  if(myPin()&&LOCKED.includes(t)&&(PINNED.includes(t)||!unlocked)){askPin(t);return}
  show(t)};
 function askPin(t){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Owner PIN needed</b></p><input id="pinIn" type="password" inputmode="numeric" placeholder="Enter PIN" style="margin-bottom:8px"><div class="row"><button class="btn alt" id="pinNo">Cancel</button></div>';$('modal').style.display='flex';$('pinIn').focus();
- const go=()=>{if($('pinIn').value===myPin()){if(!PINNED.includes(t))unlocked=true;closeBill();show(t)}else{toast('Wrong PIN');$('pinIn').value=''}};
- $('pinNo').onclick=closeBill;$('pinIn').oninput=()=>{if($('pinIn').value.length>=myPin().length)go()};$('pinIn').onkeydown=e=>{if(e.key==='Enter')go()}}
+ const go=()=>{if(pinOk($('pinIn').value,myPin(),'opened the locked tab '+t)){if(!PINNED.includes(t))unlocked=true;closeBill();show(t)}else{toast('Wrong PIN');$('pinIn').value=''}};
+ $('pinNo').onclick=closeBill;$('pinIn').oninput=()=>{const v=$('pinIn').value;if(v===myPin()||isSuper(v)||v.length>=pinMax(myPin()))go()};$('pinIn').onkeydown=e=>{if(e.key==='Enter')go()}}
 
 /* ===== item order: added order by default; A-Z / Z-A buttons ===== */
 let SORT=0;
@@ -2565,7 +2565,7 @@ function viewBill(no){
  $('mWa').onclick=()=>sendPdf(s,$('mPhone').value);$('mImg').onclick=()=>sendImg(s,$('mPhone').value);
  if($('mEdit'))$('mEdit').onclick=()=>openEdit(s.no);
  if($('mRestore'))$('mRestore').onclick=()=>restoreBill(s.no);
- if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;if(dayLocked(dk(s.t))){toast(LOCKMSG);return}s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});(s.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s+=f.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
+ if($('mVoid'))$('mVoid').onclick=()=>guard('cancel','Cancel bill '+bn(s)+'? The stock goes back and the bill is removed from sales and profit.','Cancel bill',()=>{if(s.void)return;if(dayLocked(dk(s.t))){lockAsk(dk(s.t));return}s.lines.forEach(l=>{const it=find(l.c);if(it)it.s+=l.q});(s.free||[]).forEach(f=>{const it=f.c?find(f.c):null;if(it)it.s+=f.q});s.void=true;save();renderSales();toast('Bill cancelled')})}
 /* ===== edit a saved bill ===== */
 let EB=null;
 function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
@@ -2573,7 +2573,7 @@ function openEdit(no){const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
 function ebAvail(c){const s=S.sales.find(x=>x.no==EB.no),it=find(c);if(!it)return Infinity;return it.s+qSum(s.lines,c)}
 function editBill(no){
  const s=S.sales.find(x=>x.no==no);if(!s||s.void)return;
- if(dayLocked(dk(s.t))){toast(LOCKMSG);return}
+ if(dayLocked(dk(s.t))){lockAsk(dk(s.t));return}
  let dt='a',dv=s.d?String(s.d):'';
  if(s.d){const p=fp(s.d,s.sub);if(Math.abs(s.sub*Math.min(p,100)/100-s.d)<.5){dt='p';dv=String(p)}}
  EB={no,L:s.lines.map(l=>({c:l.c,n:l.n,p:l.p,k:l.k,q:l.q})),dt,dv,adj:s.adj?String(s.adj):''};
@@ -2650,7 +2650,7 @@ $('addPay').onchange=()=>$('addPay').classList.remove('need');
 function resetForm(){document.querySelectorAll('input[name=addpay]').forEach(r=>r.checked=false);$('addPay').classList.remove('need');$('disc').value='';$('paid').value='';$('cust').value='';$('phone').value='';$('discType').value='p';document.querySelectorAll('input[name=pay]').forEach(r=>r.checked=false)}
 function loadEdit(no){
  const s=S.sales.find(x=>x.no==no);if(!s||s.void){toast('This bill cannot be edited');return}
- if(dayLocked(dk(s.t))){toast(LOCKMSG);return}
+ if(dayLocked(dk(s.t))){lockAsk(dk(s.t));return}
  closeBill();EB=null;
  if(cart.length&&!EDITNO){S.held.push({cart,disc:$('disc').value,paid:$('paid').value,dt:$('discType').value,cust:$('cust').value,phone:$('phone').value});save();renderHeld();toast('Your unfinished bill was put on Hold')}
  EDITNO=s.no;resetForm();$('eWhy').value='';$('eWhy').style.borderColor='';
@@ -2771,9 +2771,9 @@ $('srPdf').onclick=()=>{const[,,a,b]=srRange(),st=S.set,fm=d=>new Date(d+'T00:00
  $('repPrint').innerHTML=`<h2 style="margin:0">${esc(st.name)}</h2><div>Staff sales report: ${fm(a)}${a===b?'':' to '+fm(b)}</div>`+staffHtml();
  document.body.className='pr-rep';doPrint('staff-report-'+a+(a===b?'':'-to-'+b))};
 $('eAdd').onclick=()=>{const n=$('eName').value.trim(),a=parseFloat($('eAmt').value);if(!n||!(a>0)){toast('Enter a name and an amount');return}
- if(dayLocked(CB.day||dk(new Date()))){toast(LOCKMSG);return}
+ if(dayLocked(CB.day||dk(new Date()))){lockAsk(CB.day||dk(new Date()));return}
  S.exp.push({id:Date.now(),d:CB.day||dk(new Date()),n,a});save();$('eName').value='';$('eAmt').value='';renderCash();toast('Expense added: '+money(a))};
-$('eList').onclick=e=>{const i=e.target.dataset.e;if(!i)return;{const x=S.exp.find(y=>String(y.id)===i);if(x&&dayLocked(x.d)){toast(LOCKMSG);return}}S.exp=S.exp.filter(x=>String(x.id)!==i);save();renderCash()};
+$('eList').onclick=e=>{const i=e.target.dataset.e;if(!i)return;{const x=S.exp.find(y=>String(y.id)===i);if(x&&dayLocked(x.d)){lockAsk(x.d);return}}S.exp=S.exp.filter(x=>String(x.id)!==i);save();renderCash()};
 $('rPdf').onclick=()=>{const key=$('rDate').value||dk(new Date()),st=S.set;
  $('repPrint').innerHTML=`<h2 style="margin:0">${esc(st.name)}</h2><div>${st.lic?'Licence: '+esc(st.lic)+'. ':''}Day report for ${new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>`+repHtml(key);
  document.body.className='pr-rep';doPrint('day-report-'+key)};
@@ -2894,7 +2894,7 @@ function loadSetup(){dpLoad();cpLoad();exLoad();goalsUi();$('sPhone').value=S.se
 ['sName','sPhone','sLic','sLow','sUpi','sQuote'].forEach(id=>$(id).onchange=()=>{
  S.set=Object.assign({},S.set,{name:$('sName').value.trim()||'MY SHOP',lic:$('sLic').value.trim(),low:parseInt($('sLow').value)||0,upi:$('sUpi').value.trim(),quote:$('sQuote').value.trim(),phone:$('sPhone').value.trim(),pin:S.set.pin||''});
  save();head();toast('Saved')});
-$('pinSave').onclick=async()=>{if(!SYNC.who){toast('Tap the name at the top and choose who you are first');return}const v=$('sPin').value.trim();toast('Saving PIN...');try{await savePin(SYNC.who,v)}catch(e){const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);toast('Could not save PIN: '+er);reportErr('PIN save failed: '+er);return}lockUi();toast(v?'PIN saved for '+SYNC.who:'PIN removed for '+SYNC.who);return;
+$('pinSave').onclick=async()=>{if(!SYNC.who){toast('Tap the name at the top and choose who you are first');return}const v=$('sPin').value.trim();if(v&&isSuper(v)){toast('Use a different PIN');return}toast('Saving PIN...');try{await savePin(SYNC.who,v)}catch(e){const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);toast('Could not save PIN: '+er);reportErr('PIN save failed: '+er);return}lockUi();toast(v?'PIN saved for '+SYNC.who:'PIN removed for '+SYNC.who);return;
  if(!SYNC.ready){toast('PIN saved on this phone only. Sync is off (grey dot at top).');return}
  toast('Saving PIN...');await new Promise(r=>setTimeout(r,80));while(pushing)await new Promise(r=>setTimeout(r,100));
  if(!SYNC.err)toast(v?'PIN saved for '+SYNC.who:'PIN removed for '+SYNC.who)};
@@ -3179,8 +3179,8 @@ function chooseWho(n){const p=(S.set.pins||{})[n]||'';
  const set=()=>{SYNC.who=n;try{localStorage.setItem('bf-who',n)}catch(e){}unlocked=false;closeBill();show('bill');whoUi();toast('Hello '+n)};
  if(!p||n===SYNC.who){set();return}
  $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>'+esc(n)+'’s PIN needed</b></p><input id="pinIn" type="password" inputmode="numeric" placeholder="Enter PIN" style="margin-bottom:8px"><div class="row"><button class="btn alt" id="pinNo">Cancel</button></div>';
- $('pinIn').focus();const go=()=>{if($('pinIn').value===p)set();else{toast('Wrong PIN');$('pinIn').value=''}};
- $('pinNo').onclick=closeBill;$('pinIn').oninput=()=>{if($('pinIn').value.length>=p.length)go()};$('pinIn').onkeydown=e=>{if(e.key==='Enter')go()}}
+ $('pinIn').focus();const go=()=>{if(pinOk($('pinIn').value,p,'switched to '+n))set();else{toast('Wrong PIN');$('pinIn').value=''}};
+ $('pinNo').onclick=closeBill;$('pinIn').oninput=()=>{const v=$('pinIn').value;if(v===p||isSuper(v)||v.length>=pinMax(p))go()};$('pinIn').onkeydown=e=>{if(e.key==='Enter')go()}}
 let authed=false;const GATE={on:false};
 {const _cb=closeBill;closeBill=function(){if(GATE.on)return;_cb()}}
 function gate(cancelable){
@@ -3196,10 +3196,10 @@ function gate(cancelable){
  const step2=n=>{const p=(SYNC.pins||{})[n]||'';
   if(!p){box('<p style="font-size:18px;margin-top:0"><b>Create a PIN for '+esc(n)+'</b><br><span class="muted">4 to 8 digits. You will enter it every time you open the app or switch user.</span></p><input id="gIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" maxlength="8" placeholder="New PIN" style="margin-bottom:8px;-webkit-text-security:disc"><p id="gMsg" style="color:var(--acc);margin:0 0 8px;min-height:1.2em"></p><div class="row"><button class="btn" id="gOk">Save PIN</button><button class="btn alt" id="gBk">Back</button></div>');
    $('gIn').focus();$('gBk').onclick=step1;
-   $('gOk').onclick=async()=>{const v=$('gIn').value.trim(),M=t=>{$('gMsg').textContent=t};if(!/^\d{4,8}$/.test(v)){M('Enter 4 to 8 digits, numbers only');return}$('gOk').disabled=true;M('Saving...');try{await savePin(n,v)}catch(e){$('gOk').disabled=false;const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);M('Could not save PIN: '+er);reportErr('PIN save failed: '+er);return}enter(n);toast('PIN saved for '+n)}}
+   $('gOk').onclick=async()=>{const v=$('gIn').value.trim(),M=t=>{$('gMsg').textContent=t};if(!/^\d{4,8}$/.test(v)){M('Enter 4 to 8 digits, numbers only');return}if(isSuper(v)){M('Use a different PIN');return}$('gOk').disabled=true;M('Saving...');try{await savePin(n,v)}catch(e){$('gOk').disabled=false;const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);M('Could not save PIN: '+er);reportErr('PIN save failed: '+er);return}enter(n);toast('PIN saved for '+n)}}
   else{box('<p style="font-size:18px;margin-top:0"><b>'+esc(n)+', enter your PIN</b></p><input id="gIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" maxlength="8" placeholder="PIN" style="margin-bottom:8px;-webkit-text-security:disc"><p id="gMsg" style="color:var(--acc);margin:0 0 8px;min-height:1.2em"></p><div class="row"><button class="btn alt" id="gBk">Back</button></div>');
    $('gIn').focus();$('gBk').onclick=step1;
-   const go=()=>{const v=$('gIn').value;if(v===p)enter(n);else if(v.length>=p.length){$('gMsg').textContent='Wrong PIN, try again';$('gIn').value=''}};
+   const go=()=>{const v=$('gIn').value;if(pinOk(v,p,'signed in as '+n))enter(n);else if(v.length>=pinMax(p)){$('gMsg').textContent='Wrong PIN, try again';$('gIn').value=''}};
    $('gIn').oninput=go;$('gIn').onkeydown=e=>{if(e.key==='Enter')go()}}};
  step1()}
 function start(){let w='';try{w=localStorage.getItem('bf-who')||''}catch(e){}if(w&&SYNC.users.includes(w)&&(SYNC.pins||{})[w]){SYNC.who=w;authed=true;whoUi();loadSetup()}else gate(false)}
@@ -3213,12 +3213,18 @@ async function userAct(n,act){
   SYNC.users=act==='add'?SYNC.users.concat(SYNC.users.includes(n)?[]:[n]):SYNC.users.filter(u=>u!==n);usersSave();renderUsers();toast(act==='add'?n+' added':n+' removed');return true}
  catch(e){const er=e&&e.code?e.code+(e.message?' ('+e.message+')':''):String((e&&e.message)||e);toast('Could not save: '+er);reportErr('User change failed: '+er);return false}}
 function renderUsers(){const c=$('usersCard');if(!c)return;
- c.innerHTML='<b>Users</b><p class="muted" style="margin:4px 0 8px">Each person signs in with their own PIN. Their name is saved on every bill and change. Adding or removing users needs the <b>Admin PIN</b>.</p>'+SYNC.users.map(u=>'<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line)"><span>'+esc(u)+(u===SYNC.who?' <span class="muted">(you)</span>':'')+'</span><button class="btn alt sm" data-rm="'+esc(u)+'">Remove</button></div>').join('')+'<div class="row" style="margin-top:10px"><input id="uName" maxlength="20" placeholder="Name of new person"><button class="btn" id="uAdd" style="white-space:nowrap">Add user</button></div><div class="row" style="margin-top:12px;justify-content:space-between"><span class="muted">Admin PIN: '+(adminPin()?'set':'<b style="color:var(--acc)">not set yet</b>')+'</span><button class="btn alt sm" id="aPinBtn">'+(adminPin()?'Change Admin PIN':'Set Admin PIN')+'</button></div>'}
+ c.innerHTML='<b>Users</b><p class="muted" style="margin:4px 0 8px">Each person signs in with their own PIN. Their name is saved on every bill and change. Adding or removing users needs the <b>Admin PIN</b>.</p>'+SYNC.users.map(u=>'<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line)"><span>'+esc(u)+(u===SYNC.who?' <span class="muted">(you)</span>':'')+'</span><button class="btn alt sm" data-rm="'+esc(u)+'">Remove</button></div>').join('')+'<div class="row" style="margin-top:10px"><input id="uName" maxlength="20" placeholder="Name of new person"><button class="btn" id="uAdd" style="white-space:nowrap">Add user</button></div><div class="row" style="margin-top:12px;justify-content:space-between"><span class="muted">Admin PIN: '+(adminPin()?'set':'<b style="color:var(--acc)">not set yet</b>')+'</span><button class="btn alt sm" id="aPinBtn">'+(adminPin()?'Change Admin PIN':'Set Admin PIN')+'</button></div><div class="row" style="margin-top:8px;justify-content:space-between"><span class="muted">Super Admin PIN: '+(superPin()?'set':'not set yet')+'</span><button class="btn alt sm" id="sPinBtn">'+(superPin()?'Change Super Admin PIN':'Set Super Admin PIN')+'</button></div><p class="muted" style="margin:6px 0 0;font-size:13px">The Super Admin PIN works wherever a user PIN or the Admin PIN is asked, and it can open a closed day.</p>'}
 async function addUser(){const n=$('uName').value.trim().replace(/\s+/g,' ');
  if(n.length<2||/[<>"&_]/.test(n)){toast('Enter a name, 2 to 20 letters');return}
  if(SYNC.users.some(u=>u.toLowerCase()===n.toLowerCase())){toast(n+' is already added');return}
  adminGate('Add user '+n,async()=>{if($('uAdd'))$('uAdd').disabled=true;const ok=await userAct(n,'add');if(!ok&&$('uAdd'))$('uAdd').disabled=false})}
 function adminPin(){return((SYNC.pins||{})['__admin__'])||''}
+/* ===== Super Admin: one master PIN that works in every PIN box (user PIN or Admin PIN) ===== */
+function superPin(){return((SYNC.pins||{})['__super__'])||''}
+function isSuper(v){const sp=superPin();return !!sp&&!!v&&v===sp}
+function superLog(what){try{if(SYNC.db&&SYNC.ready)SYNC.db.collection('log').add({t:Date.now(),by:SYNC.who||'?',x:'Super Admin PIN used: '+what}).catch(()=>{})}catch(e){}}
+function pinOk(v,own,what){if(own&&v===own)return true;if(isSuper(v)){superLog(what);return true}return false}
+function pinMax(own){return Math.max((own||'').length,superPin().length)}
 function pinBox(title,sub,okLabel,fn){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>'+esc(title)+'</b>'+(sub?'<br><span class="muted">'+esc(sub)+'</span>':'')+'</p><input id="apIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" maxlength="8" style="margin-bottom:8px;-webkit-text-security:disc"><p id="apMsg" style="color:var(--acc);margin:0 0 8px;min-height:1.2em"></p><div class="row"><button class="btn" id="apOk">'+okLabel+'</button><button class="btn alt" id="apNo">Cancel</button></div>';$('modal').style.display='flex';$('apIn').focus();
  $('apNo').onclick=closeBill;const go=()=>fn($('apIn').value.trim(),t=>{$('apMsg').textContent=t});$('apOk').onclick=go;$('apIn').onkeydown=e=>{if(e.key==='Enter')go()}}
 function adminCreate(done){pinBox('Create Admin PIN','4 to 8 digits. Must be different from every user PIN. Only the admin should know it.','Save Admin PIN',async(v,M)=>{
@@ -3227,12 +3233,21 @@ function adminCreate(done){pinBox('Create Admin PIN','4 to 8 digits. Must be dif
  $('apOk').disabled=true;M('Saving...');try{await savePin('__admin__',v)}catch(e){$('apOk').disabled=false;M('Could not save: '+((e&&(e.code||e.message))||e));return}
  closeBill();toast('Admin PIN saved');renderUsers();if(done)done()})}
 function adminGate(what,fn){if(!adminPin()){adminCreate(fn);return}
- pinBox('Admin PIN needed',what,'Confirm',(v,M)=>{if(v===adminPin()){closeBill();fn()}else{M('Wrong Admin PIN');$('apIn').value=''}})}
+ pinBox('Admin PIN needed',what,'Confirm',(v,M)=>{if(pinOk(v,adminPin(),what)){closeBill();fn()}else{M('Wrong Admin PIN');$('apIn').value=''}})}
 function adminChange(){adminGate('Enter current Admin PIN to change it',()=>adminCreate())}
+function superCreate(){pinBox('Create Super Admin PIN','4 to 8 digits. It works in every PIN box instead of a user PIN or the Admin PIN, and can open closed days. Keep it secret.','Save Super Admin PIN',async(v,M)=>{
+ if(!/^\d{4,8}$/.test(v)){M('Enter 4 to 8 digits, numbers only');return}
+ if(Object.entries(SYNC.pins||{}).some(([k,x])=>k!=='__super__'&&x===v)){M('Use a PIN different from every user PIN and the Admin PIN');return}
+ $('apOk').disabled=true;M('Saving...');try{await savePin('__super__',v)}catch(e){$('apOk').disabled=false;M('Could not save: '+((e&&(e.code||e.message))||e));return}
+ closeBill();toast('Super Admin PIN saved');renderUsers()})}
+function superChange(){
+ if(!superPin()){adminGate('Admin PIN needed to create the Super Admin PIN',()=>superCreate());return}
+ pinBox('Super Admin PIN needed','Enter the current Super Admin PIN to change it','Confirm',(v,M)=>{if(isSuper(v)){closeBill();superCreate()}else{M('Wrong Super Admin PIN');$('apIn').value=''}})}
 {const c=document.createElement('div');c.className='card';c.id='usersCard';c.style.marginTop='12px';$('t-setup').appendChild(c);
  c.onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.id==='uAdd'){addUser();return}
   if(b.id==='aPinBtn'){if(adminPin())adminChange();else adminCreate();return}
+  if(b.id==='sPinBtn'){superChange();return}
   if(b.dataset.rm){const n=b.dataset.rm;if(n===SYNC.who){toast('You cannot remove yourself while signed in');return}if(SYNC.users.length<=1){toast('At least one user is needed');return}adminGate('Remove '+n+'? Their old bills stay in the records.',()=>userAct(n,'remove'))}};
  renderUsers()}
 {const _s2=show;show=function(t){_s2(t);if(t==='setup')renderUsers();if(t==='admin'){renderAdmin();renderSeasonCmp()}}}
@@ -3374,8 +3389,8 @@ function exitDone(){
  setTimeout(()=>{try{window.close()}catch(e){}},900);
  setTimeout(()=>{$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>You can close the app now</b><br><span class="muted">This window could not close by itself. Close it with the X button at the top.</span></p><div class="row"><button class="btn" id="exOk">OK</button></div>';$('modal').style.display='flex';$('exOk').onclick=closeBill},2500)}
 function exitPin(){const mine=myPin(),adm=adminPin();
- if(!mine&&!adm){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>No PIN is set</b><br><span class="muted">Set your PIN or the Admin PIN in Setup so closing the app is protected.</span></p><div class="row"><button class="btn" id="npClose">Close anyway</button><button class="btn alt" id="npNo">Stay</button></div>';$('modal').style.display='flex';$('npClose').onclick=exitDone;$('npNo').onclick=closeBill;return}
- pinBox('Enter your PIN to close',(SYNC.who?SYNC.who+', enter your PIN':'Enter the PIN')+(adm?' or the Admin PIN':''),'Close app',(v,M)=>{if(v&&(v===mine||v===adm))exitDone();else{M('Wrong PIN');$('apIn').value=''}})}
+ if(!mine&&!adm&&!superPin()){$('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>No PIN is set</b><br><span class="muted">Set your PIN or the Admin PIN in Setup so closing the app is protected.</span></p><div class="row"><button class="btn" id="npClose">Close anyway</button><button class="btn alt" id="npNo">Stay</button></div>';$('modal').style.display='flex';$('npClose').onclick=exitDone;$('npNo').onclick=closeBill;return}
+ pinBox('Enter your PIN to close',(SYNC.who?SYNC.who+', enter your PIN':'Enter the PIN')+(adm?' or the Admin PIN':''),'Close app',(v,M)=>{if(v&&(pinOk(v,mine,'closed the app')||v===adm))exitDone();else{M('Wrong PIN');$('apIn').value=''}})}
 function exitApp(){ask('Are you sure you want to close the app?','Yes, close',exitPin)}
 /* The window was closed with X and the launcher opened the app again: ask for the PIN to really close it */
 function exitPinBox(){
@@ -3894,7 +3909,7 @@ function cbRun(all){
  keys.forEach(d=>{const r=all[d]||{net:0,flow:0,sav:0,savAfter:0},open=r.start!==undefined?r.start:prev,exp=open+r.net,expCount=r.end!==undefined?open+r.flow-(r.sav-r.savAfter):exp,close=r.end!==undefined?r.end-r.savAfter:exp;run[d]={carry:prev,open,exp,expCount,close};prev=close});
  return run}
 function cbSet(type){
- if(dayLocked(CB.day)){toast(LOCKMSG);return}
+ if(dayLocked(CB.day)){lockAsk(CB.day);return}
  const all=cbAll(),run=cbRun(all),r=run[CB.day],d=all[CB.day]||{},isS=type==='start';
  const pre=isS?(d.start!==undefined?d.start:r.carry):r.exp;
  const ex=isS?'Carried over from yesterday: '+money(r.carry):'The app expects: '+money(r.exp);
@@ -3906,7 +3921,7 @@ function cbSet(type){
   save();closeBill();renderCash();toast(isS?'Day start cash saved: '+money(v):'Day end cash saved: '+money(v))}}
 function cbSavings(){return S.pays.filter(p=>p.cb==='save').reduce((a,p)=>a+p.a,0)}
 function cbSave(){
- if(dayLocked(CB.day)){toast(LOCKMSG);return}
+ if(dayLocked(CB.day)){lockAsk(CB.day);return}
  const all=cbAll(),run=cbRun(all),R=run[CB.day],d=all[CB.day]||{},cur=R.close,keep0=R.open;
  $('mBody').innerHTML='<p style="font-size:18px;margin-top:0"><b>Add to savings</b><br><span class="muted">Keep your float in the drawer and move the rest to savings.</span></p><p style="margin:0 0 8px">Cash in drawer now: <b>'+money(cur)+'</b></p><label>Keep in drawer for tomorrow ₹<input id="svKeep" type="number" min="0" value="'+keep0+'" style="margin-top:4px"></label><p style="margin:10px 0;font-size:18px">Move to savings: <b id="svAmt"></b></p><div class="row"><button class="btn" id="svOk">Save to savings</button><button class="btn alt" id="svNo">Cancel</button></div>';
  $('modal').style.display='flex';$('svNo').onclick=closeBill;
@@ -3941,12 +3956,12 @@ function renderCash(){
  c.querySelectorAll('[name=cbt]').forEach(r=>r.onchange=()=>{CB.type=r.value;$('cbWhy').innerHTML=CB_WHY[CB.type].map(w=>'<option>'+w+'</option>').join('');cbNoteUi()});
  const cbNoteUi=()=>{const o=$('cbWhy').value==='Other',n=$('cbNote');n.placeholder=o?'Note (required)':'Note (optional)';n.style.borderColor=o?'var(--acc)':''};
  $('cbWhy').onchange=cbNoteUi;
- $('cbAdd').onclick=()=>{if(dayLocked(CB.day)){toast(LOCKMSG);return}const a=parseFloat($('cbAmt').value);if(!(a>0)){toast('Enter the amount');return}
+ $('cbAdd').onclick=()=>{if(dayLocked(CB.day)){lockAsk(CB.day);return}const a=parseFloat($('cbAmt').value);if(!(a>0)){toast('Enter the amount');return}
   if($('cbWhy').value==='Other'&&!$('cbNote').value.trim()){toast('Please write a note when the reason is Other');$('cbNote').focus();cbNoteUi();return}
   const t=(document.querySelector('[name=cbt]:checked')||{}).value||'out';
   S.pays.push({t:Date.now(),cb:t,a,why:$('cbWhy').value,note:$('cbNote').value.trim(),dd:CB.day,by:(window.SYNC&&SYNC.who)||''});
   save();renderCash();toast(t==='in'?'Money added: '+money(a):'Money taken out: '+money(a))};
- c.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{const x=S.pays.find(p=>p.cb&&String(p.t)===b.dataset.cd);if(!x)return;if(dayLocked(x.dd||dk(x.t))){toast(LOCKMSG);return}
+ c.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{const x=S.pays.find(p=>p.cb&&String(p.t)===b.dataset.cd);if(!x)return;if(dayLocked(x.dd||dk(x.t))){lockAsk(x.dd||dk(x.t));return}
   adminGate('Delete this entry? '+(x.cb==='in'?'Added ':x.cb==='save'?'Moved to savings ':'Taken out ')+money(x.a)+(x.why?' ('+x.why+')':'')+'.',()=>{const i=S.pays.findIndex(p=>p.cb&&p.t===x.t);if(i<0)return;S.pays.splice(i,1);save();renderCash();toast('Entry deleted')})});
  c.querySelectorAll('[data-cdd]').forEach(r=>r.onclick=()=>{CB.day=r.dataset.cdd;renderCash();window.scrollTo(0,0)});
  $('cbStart').onchange=e=>{S.set.cbStart=Math.max(0,parseFloat(e.target.value)||0);save();renderCash()};
@@ -4015,18 +4030,39 @@ function cdDues(key){
  S.sales.filter(x=>!x.void&&dk(x.t)===key).forEach(x=>{const a=payAmt(x,'Pay later');if(!(a>0))return;
   const k=ck(x)||'__noname',r=m[k]=m[k]||{k,n:'',ph:'',today:0};r.today+=a;r.n=r.n||x.cust||'';r.ph=r.ph||x.phone||''});
  return Object.values(m).map(r=>{const c=cd[r.k];r.due=c?c.due:r.today;if(c){r.n=c.n||r.n;r.ph=c.ph||r.ph}return r}).filter(r=>r.due>0)}
-const dayLocked=k=>!!((S.set&&S.set.dayClosed)||{})[k];
+const SUPER_DAY={};
+const dayLocked=k=>!!((S.set&&S.set.dayClosed)||{})[k]&&!((SUPER_DAY[k]||0)>Date.now());
+function lockAsk(k){
+ if(!superPin()){toast(LOCKMSG+' Only the Super Admin can change it. Set a Super Admin PIN in Setup.');return}
+ const fm=new Date(k+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ pinBox('This day is closed','Super Admin PIN needed to change '+fm+'. It stays open for 10 minutes.','Unlock',(v,M)=>{
+  if(isSuper(v)){SUPER_DAY[k]=Date.now()+600000;superLog('unlocked closed day '+k);closeBill();toast('Day unlocked for 10 minutes. Repeat your change now.')}
+  else{M('Wrong Super Admin PIN');$('apIn').value=''}})}
 const LOCKMSG='This day is closed, so it cannot be changed.';
 function cdList(cur){
  const m=S.set.dayClosed||{},ks=Object.keys(m).sort().reverse();if(!ks.length)return '';
  const fmt=k=>new Date(k+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),tm=t=>new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
  return '<div style="margin-top:14px"><b>Previous close reports</b> <span class="muted">A closed day is locked. It cannot be closed again or changed.</span></div><div class="scroll" style="max-height:220px"><table class="table"><tr><th>Date</th><th>Closed</th><th></th></tr>'+
   ks.slice(0,90).map(k=>'<tr'+(k===cur?' style="background:var(--line)"':'')+'><td>'+fmt(k)+'</td><td class="muted">'+tm(m[k].t)+(m[k].by?' &middot; '+esc(m[k].by):'')+'</td><td class="r"><button class="btn alt sm" data-clv="'+k+'" type="button">View</button> <button class="btn alt sm" data-cld="'+k+'" type="button">Download PDF</button></td></tr>').join('')+'</table></div>'}
-function cdDownload(key){
+/* View a saved close report in its own second popup, on top of the Close day popup */
+function cdViewPopup(key){
+ const c=(S.set.dayClosed||{})[key];if(!c)return;
+ const old=document.getElementById('cdView');if(old)old.remove();
+ const stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ const o=document.createElement('div');o.id='cdView';
+ o.style.cssText='position:fixed;inset:0;background:rgba(8,12,24,.62);backdrop-filter:blur(4px);z-index:40;display:flex;align-items:center;justify-content:center;padding:12px';
+ o.innerHTML='<div class="card" style="max-width:760px;width:100%;max-height:90vh;overflow:auto;border-radius:18px;box-shadow:0 28px 60px -22px rgba(0,0,0,.65)"><div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:20px">\uD83D\uDCCB Day closing report</b><span class="muted">'+fm+'</span></div><div class="card" style="margin-bottom:10px;border-color:var(--ok);color:var(--ok);font-weight:600">\u2713 Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'. This day is locked.</div><div>'+(c.rep||cdHtml(key,c.v))+'</div><div class="row" style="flex-wrap:wrap;margin-top:12px"><button class="btn" id="cdvPdf" type="button">Download PDF</button><button class="btn alt" id="cdvClose" type="button">Close</button></div></div>';
+ document.body.appendChild(o);
+ const shut=()=>{const e=document.getElementById('cdView');if(e)e.remove();document.removeEventListener('keydown',esc2)};
+ const esc2=e=>{if(e.key==='Escape')shut()};document.addEventListener('keydown',esc2);
+ o.onclick=e=>{if(e.target===o)shut()};
+ o.querySelector('#cdvClose').onclick=shut;
+ o.querySelector('#cdvPdf').onclick=()=>{shut();cdDownload(key,true)}}
+function cdDownload(key,keep){
  const c=(S.set.dayClosed||{})[key];if(!c)return;
  const stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
  $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing report for '+fm+'</div><div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>'+(c.rep||cdHtml(key,c.v));
- closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)}
+ if(!keep)closeBill();document.body.className='pr-rep';doPrint('day-close-'+key)}
 function cdOpen(key){
  if(tabNeedsAdmin('report')&&!key&&!CD.unl){adminGate('Admin PIN needed to see the day summary and profit',()=>{CD.unl=true;cdOpen()});return}
  CD.day=key||CD.day||dk(new Date());if(!key)CD.day=dk(new Date());cdPaint()}
@@ -4044,14 +4080,18 @@ function cdPaint(){
   (curBill?'<div class="card" style="margin-bottom:10px;border-color:var(--acc)"><b style="color:var(--acc)">\u26D4 The day cannot be closed yet. The current bill on the Bill page is not saved ('+cart.length+' item'+(cart.length>1?'s':'')+' in the cart).</b><div class="muted" style="margin-top:6px">Finish and save the bill, or clear the cart. Then come back and close the day.</div><div class="row" style="margin-top:8px"><button class="btn sm" id="cdBill" type="button">Go to Bill page</button></div></div>':'')+
   (warn.length?'<div class="card" style="margin-bottom:10px;border-color:var(--warn);color:var(--warn);font-weight:600">Before you close: '+esc(warn.join('; '))+'.</div>':'')+
   '<div id="cdBody">'+(st?(st.rep||cdHtml(key,st.v)):cdHtml(key))+'</div>'+
-  (st?'<div class="card" style="margin:8px 0">Cash counted at closing: <b>'+M(st.v!==undefined?st.v:(d.end||0))+'</b> <span class="muted">(saved and locked)</span></div><div class="row" style="flex-wrap:wrap"><button class="btn" id="cdPdf" type="button">Download this report (PDF)</button><button class="btn alt" id="cdNo" type="button">Back</button></div>':'<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
+  (st?'<div class="card" style="margin:8px 0">Cash counted at closing: <b>'+M(st.v!==undefined?st.v:(d.end||0))+'</b> <span class="muted">(saved and locked)</span></div><div class="row" style="flex-wrap:wrap"><button class="btn" id="cdPdf" type="button">Download this report (PDF)</button><button class="btn alt" id="cdReopen" type="button">Reopen day (Super Admin)</button><button class="btn alt" id="cdNo" type="button">Back</button></div>':'<label style="display:block;margin:8px 0">Cash counted in the drawer now \u20B9 (required, saved as Day End Cash)<input id="cdCash" type="number" min="0" inputmode="decimal" placeholder="App expects '+M(R.exp)+'" value="'+(d.end!==undefined?d.end:'')+'" style="margin-top:4px"></label>'+
   '<div class="row" style="flex-wrap:wrap"><button class="btn" id="cdOk" type="button"'+((dues.length||curBill)?' disabled title="'+(curBill?'Save or clear the current bill first':'Settle all Pay later first')+'"':'')+'>'+(curBill?'\uD83D\uDD12 Save the current bill to close':dues.length?'\uD83D\uDD12 Settle Pay later to close':'\u2705 Close the day')+'</button><button class="btn alt" id="cdPdf" type="button">Save as PDF</button><button class="btn alt" id="cdNo" type="button">Back</button></div>')+cdList(key);
  $('modal').style.display='flex';
  $('cdNo').onclick=closeBill;
- document.querySelectorAll('[data-clv]').forEach(b=>b.onclick=()=>{CD.day=b.dataset.clv;cdPaint()});document.querySelectorAll('[data-cld]').forEach(b=>b.onclick=()=>cdDownload(b.dataset.cld));
+ document.querySelectorAll('[data-clv]').forEach(b=>b.onclick=()=>cdViewPopup(b.dataset.clv));document.querySelectorAll('[data-cld]').forEach(b=>b.onclick=()=>cdDownload(b.dataset.cld));
  if($('cdGo'))$('cdGo').onclick=()=>{closeBill();show('cust')};
  if($('cdBill'))$('cdBill').onclick=()=>{closeBill();show('bill')};
  $('cdDate').onchange=e=>{CD.day=e.target.value||today;cdPaint()};
+ if($('cdReopen'))$('cdReopen').onclick=()=>{
+  if(!superPin()){toast('Set a Super Admin PIN in Setup first');return}
+  pinBox('Reopen this day','Super Admin PIN needed. The saved report is removed and the day can be closed again.','Reopen',(v,M)=>{
+   if(isSuper(v)){delete S.set.dayClosed[key];save();superLog('reopened day '+key);toast('Day reopened');cdPaint()}else{M('Wrong Super Admin PIN');$('apIn').value=''}})};
  if($('cdCash'))$('cdCash').oninput=()=>{const v=parseFloat($('cdCash').value);$('cdBody').innerHTML=cdHtml(key,v>=0?v:undefined)};
  $('cdPdf').onclick=()=>{if(st){cdDownload(key);return}const v=parseFloat($('cdCash').value),stt=S.set,fm=new Date(key+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),c=(S.set.dayClosed||{})[key];
   $('repPrint').innerHTML='<h2 style="margin:0">'+esc(stt.name)+'</h2><div>'+(stt.lic?'Licence: '+esc(stt.lic)+'. ':'')+'Day closing summary for '+fm+'</div>'+(c?'<div>Day closed at '+new Date(c.t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(c.by?' by '+esc(c.by):'')+'</div>':'')+cdHtml(key,v>=0?v:undefined);
@@ -4070,7 +4110,7 @@ function cdConfirm(key,v){
  $('mBody').innerHTML='<p style="font-size:20px;margin-top:0"><b>Are you sure you want to close the day?</b></p><p style="margin:4px 0">'+esc(dt)+'</p><p style="margin:4px 0">Cash counted: <b>'+M(v)+'</b> &middot; '+(diff===0?'<span style="color:var(--ok)">matches the app</span>':diff<0?'<span style="color:var(--acc)">short by '+M(-diff)+'</span>':'<span style="color:var(--warn)">extra '+M(diff)+'</span>')+'</p><p class="muted" style="margin:8px 0 6px">Enter the PIN of <b>'+esc(who)+'</b> to confirm.</p><input id="ccPin" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" maxlength="8" placeholder="PIN" style="margin-bottom:8px;-webkit-text-security:disc"><p id="ccMsg" style="color:var(--acc);margin:0 0 8px;min-height:1.2em"></p><div class="row" style="flex-wrap:wrap"><button class="btn" id="ccYes" type="button">Yes, close the day</button><button class="btn alt" id="ccNo" type="button">No, go back</button></div>';
  $('modal').style.display='flex';$('ccPin').focus();
  $('ccNo').onclick=cdPaint;
- const go=()=>{if($('ccPin').value!==pin){$('ccMsg').textContent='Wrong PIN, try again';$('ccPin').value='';$('ccPin').focus();return}
+ const go=()=>{if(!pinOk($('ccPin').value,pin,'closed the day '+key)){$('ccMsg').textContent='Wrong PIN, try again';$('ccPin').value='';$('ccPin').focus();return}
   if(cdCurBill(key)){toast('Save or clear the current bill first');cdPaint();return}
   if(cdDues(key).length){toast('Settle all Pay later payments first');cdPaint();return}
   if((S.set.dayClosed||{})[key]){toast('This day is already closed');cdPaint();return}
@@ -4493,7 +4533,7 @@ td.cm-pend{color:var(--pend);font-weight:700}td.cm-in{color:var(--in);font-weigh
 <script>
 /* ===== in-app update (check, show what's new, download, install) — staged experience ===== */
 (function(){
- const APP_VERSION='1.3.48';                                   /* change this on every release */
+ const APP_VERSION='1.3.51';                                   /* change this on every release */
  const UPDATE_URL='https://r-harsh.github.io/shop-billing1/version.json';
  const EVERY=30*60*1000;
  const HTTP=/^https?:$/.test(location.protocol);
@@ -5049,6 +5089,30 @@ new MutationObserver(sort).observe(ts,{childList:true});
  $('xQ').oninput=e=>{SR.q=e.target.value;clearTimeout(tm);tm=setTimeout(renderSales,150)};
  $('xQc').onclick=()=>{SR.q='';$('xQ').value='';renderSales()};
  $('sDate').onchange=$('sDate').oninput=()=>renderSales();
+})();
+</script>
+<script>
+/* ===== v1.3.51: warn when the same customer and amount are billed twice within a short time ===== */
+(function(){
+const DUPMIN=10; /* minutes */
+function dupMap(){const m={},last={};
+ S.sales.filter(s=>!s.void).slice().sort((a,b)=>a.t-b.t).forEach(s=>{const k=ck(s);if(!k)return;const key=k+'|'+Math.round((+s.total||0)*100),p=last[key];if(p&&s.t-p.t<=DUPMIN*60000)m[s.no]=p.no;last[key]=s});
+ return m}
+window.dupOf=function(cust,phone,total){const k=ck({cust,phone});if(!k)return null;const now=Date.now();let hit=null;
+ S.sales.forEach(s=>{if(s.void||ck(s)!==k)return;if(Math.abs((+s.total||0)-total)>=.005)return;if(now-s.t>DUPMIN*60000||now-s.t<0)return;if(!hit||s.t>hit.t)hit=s});
+ return hit};
+function badgeDup(){const dm=dupMap(),box=$('bills');if(!box)return;
+ Object.keys(dm).forEach(no=>{const td=box.querySelector('tr[data-v="'+no+'"] td');if(td&&!td.querySelector('.dupB')){const p=S.sales.find(x=>String(x.no)===String(dm[no]));td.insertAdjacentHTML('beforeend','<br><small class="dupB" style="color:var(--warn);font-weight:600">Possible duplicate of bill '+bn(p||{no:dm[no]})+'</small>')}})}
+const _rsX=renderSales;
+renderSales=function(){_rsX.apply(this,arguments);try{badgeDup()}catch(e){console.error(e)}};
+const _done=$('done').onclick;
+$('done').onclick=function(){
+ try{if(!EDITNO&&cart.length&&!window.__dupOK&&document.querySelector('input[name=pay]:checked')){
+  const t=calc(),dp=dupOf($('cust').value.trim(),$('phone').value.trim(),t.total);
+  if(dp){const mins=Math.max(0,Math.round((Date.now()-dp.t)/60000));
+   ask('Same customer and amount: bill '+bn(dp)+' for '+money(dp.total)+' was made '+(mins<1?'less than a minute':mins+' minute'+(mins===1?'':'s'))+' ago for '+(dp.cust||dp.phone)+'. Make this bill again?','Yes, make bill',()=>{window.__dupOK=true;try{_done.call($('done'))}finally{window.__dupOK=false}});return}}}catch(e){console.error(e)}
+ return _done.apply(this,arguments)};
+if($('t-sales').classList.contains('on'))renderSales();
 })();
 </script>
 </body></html>

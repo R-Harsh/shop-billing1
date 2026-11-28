@@ -1,6 +1,6 @@
 {
-  "version": "1.3.48",
-  "notes": "Close the day: a closed day is now locked (cannot be closed again or changed) and its report can be downloaded later from 'Previous close reports'. The Windows app can now update itself.",
+  "version": "1.3.51",
+  "notes": "New: a warning when the same customer and amount are billed twice within 10 minutes. Possible duplicates are marked in the bill list.",
   "url": "https://r-harsh.github.io/shop-billing1/",
   "force": false
 }
